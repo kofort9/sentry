@@ -64,10 +64,10 @@ testsentry
 # Update documentation for PR changes
 docsentry
 
-# Check status of Sentries artifacts
+# Check status of sentries artifacts
 sentries-status
 
-# Clean up Sentries artifacts
+# Clean up sentries artifacts
 sentries-cleanup --dry-run  # See what would be cleaned up
 sentries-cleanup --force    # Clean up everything
 sentries-cleanup --max-age-days 7  # Clean up artifacts older than 7 days
@@ -267,7 +267,7 @@ Keeps documentation synchronized by:
 
 ### **Automated Setup (Recommended)**
 
-The easiest way to get started with Sentries:
+The easiest way to get started with Sentry:
 
 ```bash
 # 1. Clone and install
@@ -492,7 +492,7 @@ testsentry
 ## 🏷️ Artifact Tagging & Cleanup
 
 ### **Automatic Tagging**
-Sentries automatically tags all created artifacts for easy identification:
+The sentries automatically tag all created artifacts for easy identification:
 
 #### **Branch Tagging**
 - **Naming Convention**: `ai-test-fixes/<sha>-<timestamp>` or `ai-doc-updates/<sha>-<timestamp>`
@@ -501,14 +501,14 @@ Sentries automatically tags all created artifacts for easy identification:
 
 #### **PR Tagging**
 - **Labels**: Automatic labels like `ai-generated`, `sentries`, `sentry-testsentry`, `sentry-docsentry`
-- **Metadata**: PR descriptions include Sentries metadata section
+- **Metadata**: PR descriptions include sentries metadata section
 - **Comments**: Automatic metadata comments for easy identification
 
 ### **Cleanup Utilities**
 
 #### **Status Check**
 ```bash
-# Show all Sentries artifacts
+# Show all sentries artifacts
 sentries-status
 
 # Check specific repository
@@ -531,8 +531,8 @@ sentries-cleanup --repo-path /path/to/repo --force
 ```
 
 #### **Cleanup Features**
-- **Branch Cleanup**: Removes local and remote Sentries branches
-- **PR Cleanup**: Closes old Sentries PRs
+- **Branch Cleanup**: Removes local and remote sentries branches
+- **PR Cleanup**: Closes old sentries PRs
 - **Metadata Cleanup**: Removes orphaned metadata files
 - **Age-based Cleanup**: Configurable retention policies
 - **Safe Operations**: Confirmation prompts and dry-run mode
