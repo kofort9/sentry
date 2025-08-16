@@ -413,29 +413,40 @@ docsentry
 
 ```
 sentries/
-├── pyproject.toml          # Dependencies and scripts
-├── sentries/               # Core package
-│   ├── __init__.py
-│   ├── chat.py            # LLM communication
-│   ├── prompts.py         # System prompts
-│   ├── diff_utils.py      # Diff validation
-│   ├── git_utils.py       # Git operations
-│   ├── runner_common.py   # Shared utilities
-│   ├── testsentry.py      # TestSentry CLI
-│   └── docsentry.py       # DocSentry CLI
-├── scripts/
-│   └── smoke.py           # Health check
-└── examples/workflows/     # GitHub Actions
-    ├── test-sentry.yml
-    └── doc-sentry.yml
+├── pyproject.toml              # Dependencies and console scripts
+├── README.md                   # Comprehensive documentation
+├── .gitignore                  # Python and project-specific ignores
+├── sentries/                   # Core package
+│   ├── __init__.py            # Package initialization
+│   ├── banner.py              # Centralized ASCII art banner
+│   ├── chat.py                # LLM communication (Ollama + OpenAI-style)
+│   ├── prompts.py             # System prompts for planner/patcher models
+│   ├── diff_utils.py          # Diff validation and application
+│   ├── git_utils.py           # Git operations and PR management
+│   ├── runner_common.py       # Shared utilities and constants
+│   ├── testsentry.py          # TestSentry CLI (test fixes)
+│   ├── docsentry.py           # DocSentry CLI (doc updates)
+│   ├── cleanup.py             # Artifact cleanup utility
+│   ├── status.py              # Status reporting utility
+│   ├── setup_cli.py           # Setup wrapper script
+│   └── update_models_cli.py   # Model management wrapper
+├── scripts/                    # Standalone utilities
+│   ├── setup_sentries.py      # Automated setup and configuration
+│   ├── update_models.py       # LLM model management
+│   └── smoke.py               # Health check and connectivity test
+└── examples/workflows/         # GitHub Actions integration
+    ├── test-sentry.yml        # TestSentry automation workflow
+    └── doc-sentry.yml         # DocSentry automation workflow
 ```
 
 ### Adding New Features
 
-1. **New Sentry Type**: Create new CLI module following existing pattern
-2. **New Allowlists**: Update constants in `runner_common.py`
-3. **New Models**: Add to environment variables and update prompts
-4. **New Workflows**: Create workflow file in `examples/workflows/`
+1. **New Sentry Type**: Create new CLI module following existing pattern (see `testsentry.py`/`docsentry.py`)
+2. **New Allowlists**: Update constants in `runner_common.py` (see `TESTS_ALLOWLIST`, `DOCS_ALLOWLIST`)
+3. **New Models**: Add to environment variables and update prompts in `prompts.py`
+4. **New Workflows**: Create workflow file in `examples/workflows/` following existing patterns
+5. **New Utilities**: Add CLI scripts following the pattern in `scripts/` directory
+6. **New Console Scripts**: Update `pyproject.toml` with new entry points
 
 ## 🤝 Contributing
 
