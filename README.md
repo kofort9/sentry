@@ -441,12 +441,45 @@ sentries/
 
 ### Adding New Features
 
+#### **Core Sentry Types**
 1. **New Sentry Type**: Create new CLI module following existing pattern (see `testsentry.py`/`docsentry.py`)
+   - Inherit from common patterns in `runner_common.py`
+   - Add to `sentries/__init__.py` exports
+   - Follow the planner → patcher → validation → git workflow
+
+#### **Configuration & Security**
 2. **New Allowlists**: Update constants in `runner_common.py` (see `TESTS_ALLOWLIST`, `DOCS_ALLOWLIST`)
+   - Define allowed file paths and extensions
+   - Set appropriate size limits for your use case
+   - Consider security implications of new paths
+
+#### **LLM Integration**
 3. **New Models**: Add to environment variables and update prompts in `prompts.py`
+   - Create system prompts following existing format
+   - Test with `scripts/smoke.py` before deployment
+   - Document model requirements and performance characteristics
+
+#### **CI/CD Integration**
 4. **New Workflows**: Create workflow file in `examples/workflows/` following existing patterns
+   - Use concurrency controls to prevent conflicts
+   - Include Ollama health checks
+   - Set appropriate triggers and conditions
+
+#### **Utilities & Scripts**
 5. **New Utilities**: Add CLI scripts following the pattern in `scripts/` directory
+   - Use the `sentries.banner.show_sentry_banner()` for consistency
+   - Follow the class-based structure for complex operations
+   - Include proper error handling and logging
+
 6. **New Console Scripts**: Update `pyproject.toml` with new entry points
+   - Add to `[project.scripts]` section
+   - Use descriptive names following `sentries-*` pattern
+   - Test installation with `pip install -e .`
+
+#### **Testing & Validation**
+7. **Test Your Changes**: Use `scripts/smoke.py` and local testing
+8. **Update Documentation**: Keep README and examples current
+9. **Consider Backwards Compatibility**: New features shouldn't break existing functionality
 
 ## 🤝 Contributing
 
