@@ -1,0 +1,57 @@
+name: TestSentry
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    branches: [ main, master, develop ]
+
+concurrency:
+  group: sentry-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-sentry:
+    runs-on: self-hosted
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop')
+    
+    steps:
+      - name: Check Ollama
+        run: |
+          curl -sSf http://127.0.0.1:11434/api/tags >/dev/null || { 
+            echo "Ollama not running, skipping TestSentry"
+            exit 0
+          }
+      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Install Sentries
+        run: |
+          # Install from GitHub if available, otherwise use pip
+          if [ -f "pyproject.toml" ] && grep -q "sentries" pyproject.toml; then
+            pip install -e .
+          else
+            pip install git+https://github.com/your-org/sentries.git
+          fi
+      
+      - name: Run TestSentry
+        env:
+          LLM_BASE: http://127.0.0.1:11434
+          MODEL_PLAN: ${{ vars.MODEL_PLAN || 'llama3.1:8b-instruct-q4_K_M' }}
+          MODEL_PATCH: ${{ vars.MODEL_PATCH || 'deepseek-coder:6.7b-instruct-q5_K_M' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          testsentry
+      
+      - name: Label PR
+        if: github.event_name == 'pull_request'
+        run: |
+          # This step will be handled by TestSentry itself
+          echo "TestSentry will label the PR with tests-sentry:done or tests-sentry:noop"

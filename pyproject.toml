@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentries"
+version = "0.1.0"
+description = "Automated test and documentation maintenance via local LLMs"
+authors = [{name = "Sentries Team"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31.0",
+    "pyyaml>=6.0",
+    "gitpython>=3.1.0",
+]
+
+[project.scripts]
+testsentry = "sentries.testsentry:main"
+docsentry = "sentries.docsentry:main"
+sentries-cleanup = "sentries.cleanup:main"
+sentries-status = "sentries.status:main"
+sentries-setup = "sentries.setup_cli:main"
+sentries-update-models = "sentries.update_models_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sentries*"]
+
+[tool.setuptools.package-data]
+sentries = ["*.py"]
