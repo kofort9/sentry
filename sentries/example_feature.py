@@ -197,3 +197,68 @@ def complex_business_logic(user_data: Dict[str, any], business_rules: List[Dict[
         result["error"] = str(e)
     
     return result
+
+# Example feature module for testing sentries
+# This file is intentionally simple to demonstrate CodeSentry's capabilities
+
+def example_function():
+    """A simple function that returns a greeting."""
+    return "Hello, World!"
+
+def calculate_sum(a, b):
+    """Calculate the sum of two numbers.
+    
+    Args:
+        a: First number
+        b: Second number
+        
+    Returns:
+        Sum of a and b
+    """
+    return a + b
+
+def process_data(data_list):
+    """Process a list of data items.
+    
+    This function demonstrates more complex logic that might need testing.
+    
+    Args:
+        data_list: List of data items to process
+        
+    Returns:
+        Processed data with additional metadata
+    """
+    if not data_list:
+        return {"items": [], "count": 0, "processed": False}
+    
+    processed_items = []
+    for item in data_list:
+        if isinstance(item, (int, float)):
+            processed_items.append(item * 2)
+        elif isinstance(item, str):
+            processed_items.append(item.upper())
+        else:
+            processed_items.append(str(item))
+    
+    return {
+        "items": processed_items,
+        "count": len(processed_items),
+        "processed": True,
+        "original_count": len(data_list)
+    }
+
+def new_feature_for_testing():
+    """This is a new function added to trigger TestSentry and DocSentry.
+    
+    This function has no tests and minimal documentation, making it a perfect
+    candidate for both TestSentry to create tests and DocSentry to improve docs.
+    
+    Returns:
+        A dictionary with feature information
+    """
+    return {
+        "name": "Enhanced Workflow Testing",
+        "status": "active",
+        "version": "2.0.0",
+        "features": ["smart detection", "resource optimization", "stable automation"]
+    }
