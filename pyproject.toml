@@ -33,6 +33,7 @@ sentries-cleanup = "sentries.cleanup:main"
 sentries-status = "sentries.status:main"
 sentries-setup = "sentries.setup_cli:main"
 sentries-update-models = "sentries.update_models_cli:main"
+codesentry = "sentries.codesentry:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
