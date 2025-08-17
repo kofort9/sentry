@@ -4,6 +4,7 @@ Sentries Setup Script
 
 Automated setup and configuration for Sentries with LLM management.
 """
+import argparse
 import os
 import sys
 import json
@@ -479,5 +480,4 @@ def main():
     setup.run_setup()
 
 if __name__ == "__main__":
-    import argparse
     main()
