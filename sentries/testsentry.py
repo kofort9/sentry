@@ -80,15 +80,21 @@ def get_test_context(failing_tests_output: str) -> str:
             parts = line.split('::')
             if len(parts) >= 2:
                 file_path = parts[0]
-                if file_path.startswith('tests/'):
+                # Include test files from tests/ directory or sentries/test_*.py
+                if file_path.startswith('tests/') or (file_path.startswith('sentries/') and 'test_' in file_path):
                     test_files.add(file_path)
 
     context = f"Test failures detected:\n\n{failing_tests_output}\n\n"
 
     if test_files:
-        context += "Relevant test files:\n"
+        context += "Relevant test files and content:\n\n"
         for file_path in sorted(test_files):
-            context += f"- {file_path}\n"
+            try:
+                with open(file_path, 'r') as f:
+                    file_content = f.read()
+                context += f"=== {file_path} ===\n{file_content}\n\n"
+            except Exception as e:
+                context += f"=== {file_path} ===\n[Error reading file: {e}]\n\n"
 
     return context
 
