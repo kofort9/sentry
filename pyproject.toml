@@ -6,8 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "sentries"
 version = "0.1.0"
 description = "Automated test and documentation maintenance via local LLMs"
-long_description = "file: README.md"
-long_description_content_type = "text/markdown"
 authors = [{name = "Sentries Team", email = "team@sentries.dev"}]
 maintainers = [{name = "Sentries Team", email = "team@sentries.dev"}]
 license = {text = "MIT"}
@@ -33,12 +31,12 @@ dependencies = [
     "pyyaml>=6.0",
     "gitpython>=3.1.0",
 ]
-urls = {
-    "Homepage" = "https://github.com/kofort9/sentries",
-    "Documentation" = "https://github.com/kofort9/sentries#readme",
-    "Repository" = "https://github.com/kofort9/sentries.git",
-    "Issues" = "https://github.com/kofort9/sentries/issues",
-}
+
+[project.urls]
+Homepage = "https://github.com/kofort9/sentries"
+Documentation = "https://github.com/kofort9/sentries#readme"
+Repository = "https://github.com/kofort9/sentries.git"
+Issues = "https://github.com/kofort9/sentries/issues"
 
 [project.optional-dependencies]
 test = [
@@ -70,34 +68,12 @@ sentries-status = "sentries.status:main"
 sentries-setup = "sentries.setup_cli:main"
 sentries-update-models = "sentries.update_models_cli:main"
 
-[project.entry-points."console_scripts"]
-testsentry = "sentries.testsentry:main"
-docsentry = "sentries.docsentry:main"
-codesentry = "sentries.codesentry:main"
-sentries-cleanup = "sentries.cleanup:main"
-sentries-status = "sentries.status:main"
-sentries-setup = "sentries.setup_cli:main"
-sentries-update-models = "sentries.update_models_cli:main"
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["sentries*"]
 
 [tool.setuptools.package-data]
 sentries = ["*.py"]
-
-# Package distribution settings
-[tool.setuptools.distutils]
-packages = ["sentries"]
-
-[tool.setuptools.include-package-data]
-sentries = ["*.py", "*.yml", "*.yaml", "*.md"]
-
-# GitHub Actions workflow templates
-[tool.setuptools.data-files]
-".github/workflows" = [".github/workflows/*.yml"]
-"examples" = ["examples/**/*"]
-"scripts" = ["scripts/*.py", "scripts/*.sh"]
 
 [tool.pytest.ini_options]
 testpaths = ["sentries", "scripts"]
