@@ -7,7 +7,6 @@ import logging
 from typing import Optional
 
 
-
 # Constants
 TESTS_ALLOWLIST = ["tests/"]
 DOCS_ALLOWLIST = ["README.md", "docs/", "CHANGELOG.md", "ARCHITECTURE.md", "ADR/", "openapi.yaml"]
@@ -29,6 +28,7 @@ MAX_TEST_LINES = 200
 MAX_DOC_FILES = 5
 MAX_DOC_LINES = 300
 
+
 def setup_logging(level: str = "INFO") -> None:
     """Setup logging configuration."""
     logging.basicConfig(
@@ -37,9 +37,11 @@ def setup_logging(level: str = "INFO") -> None:
         handlers=[logging.StreamHandler(sys.stdout)]
     )
 
+
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
     return logging.getLogger(name)
+
 
 def validate_environment() -> bool:
     """Validate required environment variables."""
@@ -52,6 +54,7 @@ def validate_environment() -> bool:
         return False
 
     return True
+
 
 def get_short_sha() -> Optional[str]:
     """Extract short SHA from GITHUB_REF."""
@@ -66,15 +69,18 @@ def get_short_sha() -> Optional[str]:
     # For branches, extract the branch name and use as identifier
     return GITHUB_REF.replace("refs/heads/", "")[:8]
 
+
 def exit_success(message: str = "Success") -> None:
     """Exit with success code and message."""
     print(f"✅ {message}")
     sys.exit(0)
 
+
 def exit_noop(reason: str) -> None:
     """Exit with noop status."""
     print(f"⏭️  No-op: {reason}")
     sys.exit(0)
+
 
 def exit_failure(message: str, exit_code: int = 1) -> None:
     """Exit with failure code and message."""

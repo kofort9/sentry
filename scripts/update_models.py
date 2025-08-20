@@ -4,6 +4,7 @@ Sentries Model Update Utility
 
 Check for and install better versions of LLM models.
 """
+from sentries.runner_common import setup_logging, get_logger
 import os
 import sys
 
@@ -16,13 +17,12 @@ from typing import Dict, List, Optional, Tuple
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sentries.runner_common import setup_logging, get_logger
 
 logger = get_logger(__name__)
 
+
 class ModelUpdater:
     def __init__(self):
-
 
         self.ollama_base = "http://127.0.0.1:11434"
 
@@ -173,7 +173,8 @@ class ModelUpdater:
         self.update_opportunities = []
 
         for model_type, recommendations in self.model_recommendations.items():
-            current_best = self.get_best_current_model(current_models.get(model_type, []), model_type)
+            current_best = self.get_best_current_model(
+                current_models.get(model_type, []), model_type)
 
             # Check if we can upgrade to tier 1
             tier_1_models = recommendations["tier_1"]
@@ -420,6 +421,7 @@ class ModelUpdater:
             for model in tier_1_models:
                 print(f"      {model_type.title()}: {model['name']} ({model['size_gb']:.1f}GB)")
 
+
 def main():
     """Main entry point."""
     import argparse
@@ -443,6 +445,7 @@ def main():
     else:
         # Run update check
         updater.run_update_check()
+
 
 if __name__ == "__main__":
     main()

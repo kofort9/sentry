@@ -18,9 +18,9 @@ from .runner_common import setup_logging, get_logger
 
 logger = get_logger(__name__)
 
+
 class SentriesStatusReporter:
     def __init__(self, repo_path: str = "."):
-
 
         self.repo_path = repo_path
 
@@ -298,7 +298,8 @@ class SentriesStatusReporter:
                     )
 
                     if result.returncode == 0:
-                        commit_date = datetime.fromisoformat(result.stdout.strip().replace(' ', 'T'))
+                        commit_date = datetime.fromisoformat(
+                            result.stdout.strip().replace(' ', 'T'))
                         age = datetime.now() - commit_date
                         ages.append(age.days)
                 except Exception:
@@ -322,6 +323,7 @@ class SentriesStatusReporter:
         except Exception as e:
             logger.error(f"Error calculating age distribution: {e}")
 
+
 def main():
     """Main entry point."""
     import argparse
@@ -342,6 +344,7 @@ def main():
 
     # Show status
     status_reporter.show_status()
+
 
 if __name__ == "__main__":
     main()

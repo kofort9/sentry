@@ -23,9 +23,9 @@ from .runner_common import setup_logging, get_logger
 
 logger = get_logger(__name__)
 
+
 class SentriesCleanupManager:
     def __init__(self, repo_path: str = ".", dry_run: bool = False):
-
 
         self.repo_path = repo_path
         self.dry_run = dry_run
@@ -292,6 +292,7 @@ class SentriesCleanupManager:
         else:
             print("\n✅ Cleanup completed successfully")
 
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Clean up Sentries artifacts")
@@ -337,6 +338,7 @@ def main():
 
     # Run cleanup
     cleanup_manager.cleanup_all_sentries_artifacts(max_age_days=args.max_age_days)
+
 
 if __name__ == "__main__":
     main()

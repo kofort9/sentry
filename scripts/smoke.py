@@ -5,9 +5,18 @@ Tests connectivity to Ollama and model availability.
 """
 import os
 import sys
-
+from pathlib import Path
 
 import requests
+
+# Try to import sentries, add parent directory to path if needed
+try:
+    from sentries.ollama_utils import OllamaManager, get_ollama_status
+except ImportError:
+    # Add the parent directory to the path so we can import sentries
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from sentries.ollama_utils import OllamaManager, get_ollama_status
+
 
 def test_ollama_connectivity():
     """Test basic connectivity to Ollama."""
@@ -29,6 +38,7 @@ def test_ollama_connectivity():
     except Exception as e:
         print(f"❌ Ollama connectivity error: {e}")
         return False
+
 
 def test_model_availability():
     """Test if required models are available."""
@@ -67,6 +77,7 @@ def test_model_availability():
     except Exception as e:
         print(f"❌ Model availability check error: {e}")
         return False
+
 
 def test_model_response():
     """Test if models can respond to simple prompts."""
@@ -109,6 +120,7 @@ def test_model_response():
         print(f"❌ Model response test error: {e}")
         return False
 
+
 def show_sentries_banner():
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
@@ -117,27 +129,56 @@ def show_sentries_banner():
     print("=" * 50)
     print()
 
+
 def main():
     """Run all smoke tests."""
     show_sentries_banner()
 
-    # Test 1: Ollama connectivity
-    if not test_ollama_connectivity():
-        sys.exit(1)
+    # Show current Ollama status
+    status = get_ollama_status()
+    print("📊 Current Ollama Status:")
+    print(f"   Running: {'✅ Yes' if status['running'] else '❌ No'}")
+    if status['version']:
+        print(f"   Version: {status['version']}")
+    if status['models']:
+        print(f"   Models: {len(status['models'])} available")
+    print()
 
-    # Test 2: Model availability
-    if not test_model_availability():
-        sys.exit(1)
+    # Use Ollama manager for automatic lifecycle management
+    try:
+        with OllamaManager():
+            print("🧪 Running smoke tests with managed Ollama...")
+            print()
 
-    # Test 3: Model response
-    if not test_model_response():
-        sys.exit(1)
+            # Test 1: Ollama connectivity
+            if not test_ollama_connectivity():
+                sys.exit(1)
 
-    print("=" * 40)
-    print("✅ All smoke tests passed!")
-    print("\nYou can now run:")
-    print("  testsentry")
-    print("  docsentry")
+            # Test 2: Model availability
+            if not test_model_availability():
+                sys.exit(1)
+
+            # Test 3: Model response
+            if not test_model_response():
+                sys.exit(1)
+
+            print("=" * 40)
+            print("✅ All smoke tests passed!")
+            print("\nYou can now run:")
+            print("  testsentry")
+            print("  docsentry")
+
+    except RuntimeError as e:
+        print(f"\n❌ Failed to set up Ollama: {e}")
+        print("\nPlease ensure:")
+        print("1. Ollama is installed (visit https://ollama.com/download)")
+        print("2. You have internet connection for model download")
+        print("3. Sufficient disk space for the model (~4-8GB)")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Smoke test interrupted by user")
+        sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

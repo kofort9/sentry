@@ -4,7 +4,6 @@ TestSentry: Keeps tests/** green by proposing test-only patches.
 """
 import os
 
-
 import subprocess
 
 from typing import List, Dict, Optional
@@ -22,6 +21,7 @@ from .git_utils import (
 )
 
 logger = get_logger(__name__)
+
 
 def discover_test_failures() -> Optional[str]:
     """
@@ -59,6 +59,7 @@ def discover_test_failures() -> Optional[str]:
         logger.error(f"Error running pytest: {e}")
         return None
 
+
 def get_test_context(failing_tests_output: str) -> str:
     """
     Extract relevant test context from pytest output.
@@ -90,6 +91,7 @@ def get_test_context(failing_tests_output: str) -> str:
             context += f"- {file_path}\n"
 
     return context
+
 
 def plan_test_fixes(context: str) -> Optional[str]:
     """
@@ -127,6 +129,7 @@ def plan_test_fixes(context: str) -> Optional[str]:
         logger.error(f"Error during planning: {e}")
         return None
 
+
 def generate_test_patch(plan: str, context: str) -> Optional[str]:
     """
     Use the patcher model to generate a test patch.
@@ -163,6 +166,7 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"Error during patch generation: {e}")
         return None
+
 
 def apply_and_test_patch(diff_str: str) -> bool:
     """
@@ -205,6 +209,7 @@ def apply_and_test_patch(diff_str: str) -> bool:
     except Exception as e:
         logger.error(f"Error during patch application and testing: {e}")
         return False
+
 
 def create_test_fix_pr(plan: str, diff_summary: str) -> Optional[int]:
     """
@@ -254,6 +259,7 @@ def create_test_fix_pr(plan: str, diff_summary: str) -> Optional[int]:
         logger.error(f"Error creating test fix PR: {e}")
         return None
 
+
 def label_feature_pr(pr_number: int, success: bool = True) -> None:
     """
     Label the feature PR that triggered this action.
@@ -271,6 +277,7 @@ def label_feature_pr(pr_number: int, success: bool = True) -> None:
     except Exception as e:
         logger.error(f"Error labeling feature PR: {e}")
 
+
 def show_sentries_banner():
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
@@ -278,6 +285,7 @@ def show_sentries_banner():
     print("🧪 TestSentry - AI-Powered Test Fixing")
     print("=" * 50)
     print()
+
 
 def main() -> None:
     """Main entry point for TestSentry."""
@@ -331,6 +339,7 @@ def main() -> None:
         exit_success(f"Created PR #{pr_number} for test fixes")
     else:
         exit_failure("Failed to create PR for test fixes")
+
 
 if __name__ == "__main__":
     main()

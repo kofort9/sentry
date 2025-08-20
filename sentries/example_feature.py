@@ -8,8 +8,8 @@ This module contains functions that:
 """
 import json
 
-
 from typing import Dict, List, Optional
+
 
 def process_user_data(user_input: str) -> Dict[str, any]:
     """Process user input and return structured data."""
@@ -45,6 +45,7 @@ def process_user_data(user_input: str) -> Dict[str, any]:
         return {"error": "Invalid JSON format"}
     except ValueError:
         return {"error": "Invalid age value"}
+
 
 def calculate_statistics(numbers: List[float]) -> Dict[str, float]:
     """Calculate basic statistics for a list of numbers."""
@@ -83,6 +84,7 @@ def calculate_statistics(numbers: List[float]) -> Dict[str, float]:
         "range": max_val - min_val
     }
 
+
 def validate_email(email: str) -> bool:
     """Validate email address format."""
     # Simple function with low complexity
@@ -102,6 +104,7 @@ def validate_email(email: str) -> bool:
         return False
 
     return True
+
 
 def generate_report(data: Dict[str, any], format_type: str = "text") -> str:
     """Generate a report in the specified format."""
@@ -133,8 +136,9 @@ def generate_report(data: Dict[str, any], format_type: str = "text") -> str:
         return f"Unsupported format: {format_type}"
 
 # This function has no docstring and will be flagged by CodeSentry
-def undocumented_function(x: int, y: int) -> int:
 
+
+def undocumented_function(x: int, y: int) -> int:
 
     result = x + y
     if result > 100:
@@ -142,6 +146,8 @@ def undocumented_function(x: int, y: int) -> int:
     return result
 
 # This function has high complexity and will need comprehensive testing
+
+
 def complex_business_logic(user_data: Dict[str, any], business_rules: List[Dict[str, any]]) -> Dict[str, any]:
     """Apply business rules to user data."""
     if not user_data or not business_rules:
@@ -198,9 +204,11 @@ def complex_business_logic(user_data: Dict[str, any], business_rules: List[Dict[
 # Example feature module for testing sentries
 # This file is intentionally simple to demonstrate CodeSentry's capabilities
 
+
 def example_function():
     """A simple function that returns a greeting."""
     return "Hello, World!"
+
 
 def calculate_sum(a, b):
     """Calculate the sum of two numbers.
@@ -213,6 +221,7 @@ def calculate_sum(a, b):
         Sum of a and b
     """
     return a + b
+
 
 def process_data(data_list):
     """Process a list of data items.
@@ -243,6 +252,7 @@ def process_data(data_list):
         "processed": True,
         "original_count": len(data_list)
     }
+
 
 def new_feature_for_testing():
     """This is a new function added to trigger TestSentry and DocSentry.

@@ -5,7 +5,6 @@ DocSentry: Keeps docs in sync by proposing docs-only patches.
 import os
 import json
 
-
 import subprocess
 from typing import List, Dict, Optional, Tuple
 from .runner_common import (
@@ -22,6 +21,7 @@ from .git_utils import (
 )
 
 logger = get_logger(__name__)
+
 
 def read_github_event() -> Optional[Dict]:
     """
@@ -44,6 +44,7 @@ def read_github_event() -> Optional[Dict]:
     except Exception as e:
         logger.error(f"Error reading GitHub event: {e}")
         return None
+
 
 def get_pr_context(event_data: Dict) -> Optional[Tuple[str, str, str]]:
     """
@@ -77,6 +78,7 @@ def get_pr_context(event_data: Dict) -> Optional[Tuple[str, str, str]]:
     except Exception as e:
         logger.error(f"Error extracting PR context: {e}")
         return None
+
 
 def get_diff_summary() -> Optional[str]:
     """
@@ -129,6 +131,7 @@ def get_diff_summary() -> Optional[str]:
         logger.error(f"Error getting diff summary: {e}")
         return None
 
+
 def plan_doc_updates(title: str, body: str, diff_summary: str) -> Optional[str]:
     """
     Use the planner model to plan documentation updates.
@@ -173,6 +176,7 @@ Please analyze these changes and propose minimal documentation updates to keep d
         logger.error(f"Error during documentation planning: {e}")
         return None
 
+
 def generate_doc_patch(plan: str, context: str) -> Optional[str]:
     """
     Use the patcher model to generate a documentation patch.
@@ -210,6 +214,7 @@ def generate_doc_patch(plan: str, context: str) -> Optional[str]:
         logger.error(f"Error during patch generation: {e}")
         return None
 
+
 def apply_doc_patch(diff_str: str) -> bool:
     """
     Apply the documentation patch.
@@ -238,6 +243,7 @@ def apply_doc_patch(diff_str: str) -> bool:
     except Exception as e:
         logger.error(f"Error applying documentation patch: {e}")
         return False
+
 
 def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
     """
@@ -287,6 +293,7 @@ def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
         logger.error(f"Error creating documentation update PR: {e}")
         return None
 
+
 def label_feature_pr(pr_number: int, success: bool = True) -> None:
     """
     Label the feature PR that triggered this action.
@@ -304,6 +311,7 @@ def label_feature_pr(pr_number: int, success: bool = True) -> None:
     except Exception as e:
         logger.error(f"Error labeling feature PR: {e}")
 
+
 def show_sentries_banner():
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
@@ -311,6 +319,7 @@ def show_sentries_banner():
     print("📚 DocSentry - AI-Powered Documentation Updates")
     print("=" * 50)
     print()
+
 
 def main() -> None:
     """Main entry point for DocSentry."""
@@ -370,6 +379,7 @@ def main() -> None:
         exit_success(f"Created PR #{pr_number} for documentation updates")
     else:
         exit_failure("Failed to create PR for documentation updates")
+
 
 if __name__ == "__main__":
     main()

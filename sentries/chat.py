@@ -8,6 +8,7 @@ from .runner_common import LLM_BASE, get_logger
 
 logger = get_logger(__name__)
 
+
 def chat(
     model: str,
     messages: List[Dict[str, str]],
@@ -35,6 +36,7 @@ def chat(
         return _chat_ollama(model, messages, temperature, max_tokens, num_ctx)
     else:
         return _chat_openai_style(model, messages, temperature, max_tokens)
+
 
 def _chat_ollama(
     model: str,
@@ -76,6 +78,7 @@ def _chat_ollama(
     result = response.json()
     return result.get("message", {}).get("content", "").strip()
 
+
 def _chat_openai_style(
     model: str,
     messages: List[Dict[str, str]],
@@ -99,6 +102,7 @@ def _chat_openai_style(
 
     result = response.json()
     return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
 
 def get_default_params(model_type: str) -> Dict[str, Any]:
     """

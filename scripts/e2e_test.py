@@ -5,12 +5,12 @@ End-to-End Testing Script for Sentries
 This script creates a comprehensive test environment to verify that
 all Sentries components work together correctly.
 """
-import re
-
 import os
+import sys
+
 import shutil
 import subprocess
-import sys
+
 import tempfile
 from pathlib import Path
 
@@ -157,14 +157,16 @@ python_files = ["test_*.py"]
         # Initialize git
         subprocess.run(["git", "init"], check=True, capture_output=True)
         subprocess.run(["git", "config", "user.name", "Test User"], check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@example.com"], check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"],
+                       check=True, capture_output=True)
 
         # Add all files
         subprocess.run(["git", "add", "."], check=True, capture_output=True)
         subprocess.run(["git", "commit", "-m", "Initial commit"], check=True, capture_output=True)
 
         # Create a feature branch
-        subprocess.run(["git", "checkout", "-b", "feature/test-sentries"], check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "feature/test-sentries"],
+                       check=True, capture_output=True)
 
         # Make some changes to trigger doc updates
         readme_content = '''# Test Repository
@@ -213,7 +215,8 @@ This is a new feature that was added recently.
             assert hasattr(prompts, 'PLANNER_TESTS'), "prompts module missing PLANNER_TESTS"
             assert hasattr(prompts, 'PATCHER_TESTS'), "prompts module missing PATCHER_TESTS"
 
-            self._record_test_result("Import functionality", True, "All modules imported successfully")
+            self._record_test_result("Import functionality", True,
+                                     "All modules imported successfully")
 
         except ImportError as e:
             self._record_test_result("Import functionality", False, f"Import failed: {e}")
@@ -226,17 +229,21 @@ This is a new feature that was added recently.
         try:
             # Test test allowlist
             assert "tests/" in TESTS_ALLOWLIST, "tests/ not in TESTS_ALLOWLIST"
-            assert "tests/" in [str(p) for p in TESTS_ALLOWLIST], "tests/ path not properly configured"
+            assert "tests/" in [str(p)
+                                for p in TESTS_ALLOWLIST], "tests/ path not properly configured"
 
             # Test docs allowlist
-            assert "README.md" in [str(p) for p in DOCS_ALLOWLIST], "README.md not in DOCS_ALLOWLIST"
+            assert "README.md" in [str(p)
+                                   for p in DOCS_ALLOWLIST], "README.md not in DOCS_ALLOWLIST"
             assert "docs/" in [str(p) for p in DOCS_ALLOWLIST], "docs/ not in DOCS_ALLOWLIST"
 
             print("✅ Allowlists properly configured")
-            self._record_test_result("Allowlist validation", True, "All allowlists properly configured")
+            self._record_test_result("Allowlist validation", True,
+                                     "All allowlists properly configured")
 
         except AssertionError as e:
-            self._record_test_result("Allowlist validation", False, f"Allowlist validation failed: {e}")
+            self._record_test_result("Allowlist validation", False,
+                                     f"Allowlist validation failed: {e}")
             raise
 
     def test_cli_commands(self):
@@ -263,7 +270,8 @@ This is a new feature that was added recently.
             for cmd in cli_commands:
                 # Run from the test repository directory
                 os.chdir(self.test_repo)
-                result = subprocess.run([cmd, "--help"], capture_output=True, text=True, env=test_env)
+                result = subprocess.run([cmd, "--help"], capture_output=True,
+                                        text=True, env=test_env)
                 if result.returncode == 0:
                     print(f"✅ {cmd} command available")
                 else:
@@ -301,14 +309,17 @@ This is a new feature that was added recently.
 
             # Check git status
             os.chdir(self.test_repo)
-            result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+            result = subprocess.run(["git", "status", "--porcelain"],
+                                    capture_output=True, text=True)
             assert result.returncode == 0, "Git status command failed"
 
             print("✅ Repository structure is correct")
-            self._record_test_result("Repository structure", True, "Repository structure is correct")
+            self._record_test_result("Repository structure", True,
+                                     "Repository structure is correct")
 
         except Exception as e:
-            self._record_test_result("Repository structure", False, f"Repository structure test failed: {e}")
+            self._record_test_result("Repository structure", False,
+                                     f"Repository structure test failed: {e}")
             raise
 
     def test_failing_tests(self):
@@ -399,14 +410,16 @@ This is a new feature that was added recently.
                     print(f"  ❌ {test['test']}: {test['details']}")
 
         if self.results['total_tests'] > 0:
-            print(f"\nSuccess Rate: {(self.results['tests_passed'] / self.results['total_tests'] * 100):.1f}%")
+            print(
+                f"\nSuccess Rate: {(self.results['tests_passed'] / self.results['total_tests'] * 100):.1f}%")
         else:
             print("\nSuccess Rate: N/A (no tests run)")
 
         if self.results['tests_failed'] == 0:
             print("\n🎉 All tests passed! Sentries are ready for deployment.")
         else:
-            print(f"\n⚠️  {self.results['tests_failed']} test(s) failed. Please fix before deployment.")
+            print(
+                f"\n⚠️  {self.results['tests_failed']} test(s) failed. Please fix before deployment.")
 
     def cleanup(self):
         """Clean up test environment"""

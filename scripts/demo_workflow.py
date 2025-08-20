@@ -8,21 +8,22 @@ This script demonstrates the complete end-to-end workflow:
 3. DocSentry updates documentation
 4. Shows the complete automation pipeline
 """
-import re
-
 import os
-import subprocess
 import sys
+
+import subprocess
 
 from pathlib import Path
 
 # Try to import sentries, add parent directory to path if needed
 try:
     from sentries.banner import show_sentry_banner
+    from sentries.ollama_utils import OllamaManager
 except ImportError:
     # Add the parent directory to the path so we can import sentries
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from sentries.banner import show_sentry_banner
+    from sentries.ollama_utils import OllamaManager
 
 
 def run_command(cmd: str, description: str, capture_output: bool = False) -> bool:
@@ -122,11 +123,12 @@ def demonstrate_testsentry():
     # First, let's show the current test status
     print("\n📋 Current Test Status:")
     run_command("python -m pytest sentries/test_example_feature.py --tb=short",
-               "Running tests to show current status", capture_output=True)
+                "Running tests to show current status", capture_output=True)
 
     # Now run TestSentry
     print("\n🚀 Running TestSentry...")
-    success = run_command("testsentry", "Running TestSentry to fix failing tests", capture_output=True)
+    success = run_command(
+        "testsentry", "Running TestSentry to fix failing tests", capture_output=True)
 
     if success:
         print("\n✅ TestSentry completed!")
@@ -150,7 +152,8 @@ def demonstrate_docsentry():
 
     # Run DocSentry
     print("\n🚀 Running DocSentry...")
-    success = run_command("docsentry", "Running DocSentry to update documentation", capture_output=True)
+    success = run_command(
+        "docsentry", "Running DocSentry to update documentation", capture_output=True)
 
     if success:
         print("\n✅ DocSentry completed!")
@@ -215,41 +218,56 @@ def main():
         print("\n❌ Prerequisites not met. Please fix the issues above and try again.")
         sys.exit(1)
 
-    print("\n🎬 Starting Workflow Demonstration...")
-    print("This will take a few minutes to complete.")
+    # Use Ollama manager for automatic lifecycle management
+    try:
+        with OllamaManager():
+            print("\n🎬 Starting Workflow Demonstration...")
+            print("This will take a few minutes to complete.")
 
-    # Step 1: CodeSentry
-    codesentry_success = demonstrate_codesentry()
+            # Step 1: CodeSentry
+            codesentry_success = demonstrate_codesentry()
 
-    # Step 2: TestSentry
-    testsentry_success = demonstrate_testsentry()
+            # Step 2: TestSentry
+            testsentry_success = demonstrate_testsentry()
 
-    # Step 3: DocSentry
-    docsentry_success = demonstrate_docsentry()
+            # Step 3: DocSentry
+            docsentry_success = demonstrate_docsentry()
 
-    # Summary
-    show_workflow_summary()
+            # Summary
+            show_workflow_summary()
 
-    # Final status
-    print("\n📊 DEMONSTRATION RESULTS")
-    print("=" * 50)
-    print(f"CodeSentry: {'✅ Success' if codesentry_success else '⚠️  Issues'}")
-    print(f"TestSentry: {'✅ Success' if testsentry_success else '⚠️  Issues'}")
-    print(f"DocSentry:  {'✅ Success' if docsentry_success else '⚠️  Issues'}")
+            # Final status
+            print("\n📊 DEMONSTRATION RESULTS")
+            print("=" * 50)
+            print(f"CodeSentry: {'✅ Success' if codesentry_success else '⚠️  Issues'}")
+            print(f"TestSentry: {'✅ Success' if testsentry_success else '⚠️  Issues'}")
+            print(f"DocSentry:  {'✅ Success' if docsentry_success else '⚠️  Issues'}")
 
-    if codesentry_success and testsentry_success and docsentry_success:
-        print("\n🎉 All components working perfectly!")
-        print("Your Sentries installation is ready for production use.")
-    else:
-        print("\n⚠️  Some components had issues.")
-        print("This is normal for demonstration purposes.")
-        print("Check the output above for details.")
+            if codesentry_success and testsentry_success and docsentry_success:
+                print("\n🎉 All components working perfectly!")
+                print("Your Sentries installation is ready for production use.")
+            else:
+                print("\n⚠️  Some components had issues.")
+                print("This is normal for demonstration purposes.")
+                print("Check the output above for details.")
 
-    print("\n🔗 Next Steps:")
-    print("1. Visit GitHub to see any created PRs")
-    print("2. Review the automated changes")
-    print("3. Deploy Sentries to your other repositories")
-    print("4. Enjoy automated code maintenance!")
+            print("\n🔗 Next Steps:")
+            print("1. Visit GitHub to see any created PRs")
+            print("2. Review the automated changes")
+            print("3. Deploy Sentries to your other repositories")
+            print("4. Enjoy automated code maintenance!")
+
+    except RuntimeError as e:
+        print(f"\n❌ Failed to set up Ollama: {e}")
+        print("\nPlease ensure:")
+        print("1. Ollama is installed (visit https://ollama.com/download)")
+        print("2. You have internet connection for model download")
+        print("3. Sufficient disk space for the model (~4-8GB)")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Demonstration interrupted by user")
+        sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

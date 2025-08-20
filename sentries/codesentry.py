@@ -10,9 +10,6 @@ CodeSentry scans repositories to identify:
 """
 import sys
 
-
-
-
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Tuple
 from dataclasses import dataclass
@@ -23,6 +20,7 @@ from .banner import show_sentry_banner
 from .runner_common import get_logger, TESTS_ALLOWLIST, DOCS_ALLOWLIST
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class CodeCandidate:
@@ -35,6 +33,7 @@ class CodeCandidate:
     complexity_score: float
     priority: str  # 'high', 'medium', 'low'
 
+
 @dataclass
 class AnalysisResult:
     """Result of code analysis."""
@@ -44,11 +43,11 @@ class AnalysisResult:
     documentation_needs: List[CodeCandidate]
     summary: Dict[str, int]
 
+
 class CodeAnalyzer:
     """Analyzes code for testing and documentation opportunities."""
 
     def __init__(self, repo_path: str = "."):
-
 
         self.repo_path = Path(repo_path).resolve()
         self.repo = None
@@ -83,8 +82,8 @@ class CodeAnalyzer:
             'test_coverage_gaps': len(test_coverage_gaps),
             'undocumented_changes': len(undocumented_changes),
             'documentation_needs': len(documentation_needs),
-            'total_candidates': len(untested_functions) + len(test_coverage_gaps) +
-                              len(undocumented_changes) + len(documentation_needs)
+            'total_candidates': len(untested_functions) + len(test_coverage_gaps)
+            + len(undocumented_changes) + len(documentation_needs)
         }
 
         return AnalysisResult(
@@ -115,7 +114,8 @@ class CodeAnalyzer:
             if not any(test_pattern in file_path for test_pattern in self.test_files):
                 self.source_files.add(file_path)
 
-        logger.info(f"Found {len(self.test_files)} test files and {len(self.source_files)} source files")
+        logger.info(
+            f"Found {len(self.test_files)} test files and {len(self.source_files)} source files")
 
     def _find_untested_functions(self) -> List[CodeCandidate]:
         """Find functions that don't have corresponding tests."""
@@ -334,11 +334,11 @@ class CodeAnalyzer:
         else:
             return 'low'
 
+
 class CodeSentry:
     """Main CodeSentry class for analyzing and reporting code candidates."""
 
     def __init__(self, repo_path: str = "."):
-
 
         self.analyzer = CodeAnalyzer(repo_path)
         self.results = None
@@ -371,7 +371,7 @@ class CodeSentry:
         # High priority items
         high_priority = []
         for candidate_list in [self.results.untested_functions, self.results.test_coverage_gaps,
-                             self.results.undocumented_changes, self.results.documentation_needs]:
+                               self.results.undocumented_changes, self.results.documentation_needs]:
             high_priority.extend([c for c in candidate_list if c.priority == 'high'])
 
         if high_priority:
@@ -398,16 +398,17 @@ class CodeSentry:
         if not self.results:
             self.analyze()
 
-        return (self.results.untested_functions +
-                self.results.test_coverage_gaps)
+        return (self.results.untested_functions
+                + self.results.test_coverage_gaps)
 
     def get_doc_candidates(self) -> List[CodeCandidate]:
         """Get candidates suitable for DocSentry."""
         if not self.results:
             self.analyze()
 
-        return (self.results.undocumented_changes +
-                self.results.documentation_needs)
+        return (self.results.undocumented_changes
+                + self.results.documentation_needs)
+
 
 def main():
     """Main entry point for CodeSentry CLI."""
@@ -439,6 +440,7 @@ def main():
         logger.error(f"CodeSentry failed: {e}")
         print(f"❌ Error: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

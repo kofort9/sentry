@@ -14,6 +14,7 @@ from .runner_common import GITHUB_TOKEN, GITHUB_REPOSITORY, get_logger
 
 logger = get_logger(__name__)
 
+
 def current_sha() -> str:
     """Get the current commit SHA."""
     try:
@@ -30,6 +31,7 @@ def current_sha() -> str:
     except Exception as e:
         logger.error(f"Error getting current SHA: {e}")
         raise
+
 
 def get_short_sha(sha: str = None) -> str:
     """Get the short version of a SHA."""
@@ -50,6 +52,7 @@ def get_short_sha(sha: str = None) -> str:
     except Exception as e:
         logger.error(f"Error getting short SHA: {e}")
         return sha[:8]
+
 
 def create_branch(prefix: str, sha: str = None, sentry_type: str = "unknown") -> str:
     """
@@ -107,6 +110,7 @@ def create_branch(prefix: str, sha: str = None, sentry_type: str = "unknown") ->
         logger.error(f"Error creating branch: {e}")
         raise
 
+
 def tag_branch_with_sentries_metadata(branch_name: str, sentry_type: str, source_sha: str):
     """
     Add Sentries metadata to a branch for easy identification.
@@ -142,6 +146,7 @@ def tag_branch_with_sentries_metadata(branch_name: str, sentry_type: str, source
 
     except Exception as e:
         logger.warning(f"Could not add metadata to branch {branch_name}: {e}")
+
 
 def is_sentries_branch(branch_name: str) -> bool:
     """
@@ -181,6 +186,7 @@ def is_sentries_branch(branch_name: str) -> bool:
     except Exception:
         return False
 
+
 def get_sentries_branches() -> List[str]:
     """
     Get all branches created by Sentries.
@@ -210,6 +216,7 @@ def get_sentries_branches() -> List[str]:
     except Exception as e:
         logger.error(f"Error getting Sentries branches: {e}")
         return []
+
 
 def commit_all(message: str) -> bool:
     """
@@ -253,6 +260,7 @@ def commit_all(message: str) -> bool:
     except Exception as e:
         logger.error(f"Error committing changes: {e}")
         return False
+
 
 def open_pull_request(
     base_branch: str,
@@ -327,6 +335,7 @@ def open_pull_request(
         logger.error(f"Error creating PR: {e}")
         return None
 
+
 def add_sentries_labels_to_pr(pr_number: int, sentry_type: str):
     """
     Add Sentries-specific labels to a PR for easy identification.
@@ -351,6 +360,7 @@ def add_sentries_labels_to_pr(pr_number: int, sentry_type: str):
 
     except Exception as e:
         logger.error(f"Error adding Sentries labels to PR #{pr_number}: {e}")
+
 
 def add_sentries_metadata_to_pr(pr_number: int, sentry_type: str, source_branch: str):
     """
@@ -388,6 +398,7 @@ def add_sentries_metadata_to_pr(pr_number: int, sentry_type: str, source_branch:
 
     except Exception as e:
         logger.error(f"Error adding metadata comment to PR #{pr_number}: {e}")
+
 
 def get_sentries_prs() -> List[Dict]:
     """
@@ -427,6 +438,7 @@ def get_sentries_prs() -> List[Dict]:
         logger.error(f"Error getting Sentries PRs: {e}")
         return []
 
+
 def label_pull_request(pr_number: int, labels: List[str]) -> bool:
     """
     Add labels to a pull request.
@@ -464,6 +476,7 @@ def label_pull_request(pr_number: int, labels: List[str]) -> bool:
     except Exception as e:
         logger.error(f"Error adding labels to PR #{pr_number}: {e}")
         return False
+
 
 def get_base_branch() -> str:
     """Get the base branch name (main or master)."""

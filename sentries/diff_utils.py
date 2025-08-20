@@ -4,11 +4,13 @@ Diff utilities for validating and applying unified diffs.
 import os
 import re
 
+
 import subprocess
 from typing import List, Tuple, Optional
 from .runner_common import get_logger, TESTS_ALLOWLIST, DOCS_ALLOWLIST
 
 logger = get_logger(__name__)
+
 
 def is_allowed_path(path: str, allowlist: List[str]) -> bool:
     """
@@ -37,6 +39,7 @@ def is_allowed_path(path: str, allowlist: List[str]) -> bool:
                 return True
 
     return False
+
 
 def validate_unified_diff(diff_str: str, allowlist: List[str]) -> Tuple[bool, str]:
     """
@@ -93,6 +96,7 @@ def validate_unified_diff(diff_str: str, allowlist: List[str]) -> Tuple[bool, st
 
     return True, "Valid diff"
 
+
 def apply_unified_diff(repo_path: str, diff_str: str) -> bool:
     """
     Apply a unified diff to the repository.
@@ -135,6 +139,7 @@ def apply_unified_diff(repo_path: str, diff_str: str) -> bool:
     except Exception as e:
         logger.error(f"Error applying diff: {e}")
         return False
+
 
 def extract_diff_summary(diff_str: str) -> str:
     """

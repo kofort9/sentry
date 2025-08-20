@@ -4,10 +4,12 @@ Sentries Setup Script
 
 Automated setup and configuration for Sentries with LLM management.
 """
+from sentries.runner_common import setup_logging, get_logger
 import os
 import sys
-import argparse
 
+
+import argparse
 
 import subprocess
 import requests
@@ -17,13 +19,12 @@ from typing import Dict, List, Optional
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sentries.runner_common import setup_logging, get_logger
 
 logger = get_logger(__name__)
 
+
 class SentriesSetup:
     def __init__(self):
-
 
         self.ollama_base = "http://127.0.0.1:11434"
         self.required_models = {
@@ -182,7 +183,7 @@ class SentriesSetup:
         # Check if ollama command exists
         try:
             result = subprocess.run(['ollama', '--version'],
-                                  capture_output=True, text=True, timeout=10)
+                                    capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
                 version = result.stdout.strip()
                 print(f"   ✅ Ollama found: {version}")
@@ -215,8 +216,8 @@ class SentriesSetup:
             print("   🔄 Starting Ollama service...")
             # Start in background
             subprocess.Popen(['ollama', 'serve'],
-                           stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL)
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
 
             # Wait for it to start
             import time
@@ -375,7 +376,7 @@ MODEL_PATCH={self.required_models['patcher']['name']}
         # Test Sentries installation
         try:
             result = subprocess.run(['python', '-c', 'from sentries import testsentry, docsentry; print("OK")'],
-                                  capture_output=True, text=True, timeout=10)
+                                    capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
                 print("   ✅ Sentries package ✓")
             else:
@@ -388,7 +389,7 @@ MODEL_PATCH={self.required_models['patcher']['name']}
         # Test smoke script
         try:
             result = subprocess.run(['python', 'scripts/smoke.py'],
-                                  capture_output=True, text=True, timeout=60)
+                                    capture_output=True, text=True, timeout=60)
             if result.returncode == 0:
                 print("   ✅ Smoke test ✓")
             else:
@@ -412,7 +413,7 @@ MODEL_PATCH={self.required_models['patcher']['name']}
             }
 
             response = requests.post(f"{self.ollama_base}/api/chat",
-                                  json=payload, timeout=30)
+                                     json=payload, timeout=30)
 
             if response.status_code == 200:
                 result = response.json()
@@ -457,6 +458,7 @@ MODEL_PATCH={self.required_models['patcher']['name']}
 
         print("\n🚀 Happy coding with Sentries!")
 
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Setup Sentries with LLM management")
@@ -481,6 +483,7 @@ def main():
 
     # Run setup
     setup.run_setup()
+
 
 if __name__ == "__main__":
     main()

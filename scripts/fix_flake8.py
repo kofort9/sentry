@@ -7,8 +7,8 @@ import os
 import re
 
 
-
 from pathlib import Path
+
 
 def fix_trailing_whitespace(file_path):
     """Remove trailing whitespace from lines."""
@@ -27,6 +27,7 @@ def fix_trailing_whitespace(file_path):
         return True
     return False
 
+
 def fix_blank_line_whitespace(file_path):
     """Remove whitespace from blank lines."""
     with open(file_path, 'r') as f:
@@ -41,6 +42,7 @@ def fix_blank_line_whitespace(file_path):
             f.write(fixed_content)
         return True
     return False
+
 
 def fix_unused_imports(file_path):
     """Remove obviously unused imports."""
@@ -76,6 +78,7 @@ def fix_unused_imports(file_path):
         return True
     return False
 
+
 def process_file(file_path):
     """Process a single file to fix flake8 issues."""
     print(f"Processing: {file_path}")
@@ -101,6 +104,7 @@ def process_file(file_path):
         print("  ✓ No changes needed")
 
     return changes_made
+
 
 def main():
     """Main function to process all Python files."""
@@ -136,6 +140,7 @@ def main():
         print("  - F541: F-string missing placeholders")
         print()
         print("Run flake8 again to see remaining issues.")
+
 
 if __name__ == "__main__":
     main()

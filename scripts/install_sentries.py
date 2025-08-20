@@ -6,11 +6,10 @@ This script helps users quickly set up Sentries in their repository.
 """
 import sys
 
-
-
 import subprocess
 import shutil
 from pathlib import Path
+
 
 def print_banner():
     """Print the Sentries installation banner."""
@@ -20,6 +19,7 @@ def print_banner():
     print("🤖 Automated test and documentation maintenance via local LLMs")
     print()
 
+
 def check_python_version():
     """Check if Python version meets requirements."""
     if sys.version_info < (3, 10):
@@ -28,6 +28,7 @@ def check_python_version():
         sys.exit(1)
     print(f"✅ Python version: {sys.version.split()[0]}")
 
+
 def check_git_repo():
     """Check if we're in a git repository."""
     if not Path(".git").exists():
@@ -35,6 +36,7 @@ def check_git_repo():
         print("   Please run this script from your repository root")
         sys.exit(1)
     print("✅ Git repository detected")
+
 
 def check_github_integration():
     """Check if GitHub integration is available."""
@@ -54,6 +56,7 @@ def check_github_integration():
     except subprocess.CalledProcessError:
         print("⚠️  No remote origin configured")
         print("   GitHub integration recommended for best experience")
+
 
 def install_sentries():
     """Install Sentries package."""
@@ -82,6 +85,7 @@ def install_sentries():
         except subprocess.CalledProcessError:
             print("❌ Installation failed")
             return False
+
 
 def verify_installation():
     """Verify that Sentries was installed correctly."""
@@ -112,6 +116,7 @@ def verify_installation():
     else:
         print("⚠️  Some CLI tools may not be available")
         return False
+
 
 def setup_github_actions():
     """Set up GitHub Actions workflows."""
@@ -144,6 +149,7 @@ def setup_github_actions():
 
     print("✅ GitHub Actions setup complete")
 
+
 def create_config_file():
     """Create a basic configuration file."""
     print("\n📝 Creating configuration file...")
@@ -173,6 +179,7 @@ DOCS_ALLOWLIST=[]   # Add documentation patterns to ignore
         print("   Edit this file to customize Sentries behavior")
     else:
         print("✅ Configuration file already exists: .sentriesrc")
+
 
 def print_next_steps():
     """Print next steps for the user."""
@@ -209,6 +216,7 @@ def print_next_steps():
     print("\n🎉 Welcome to Sentries! Your repository now has AI-powered automation!")
     print("🎯" * 50)
 
+
 def main():
     """Main installation function."""
     print_banner()
@@ -233,6 +241,7 @@ def main():
 
     # Next steps
     print_next_steps()
+
 
 if __name__ == "__main__":
     main()
