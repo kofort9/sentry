@@ -25,15 +25,32 @@ logger = get_logger(__name__)
 
 def discover_test_failures() -> Optional[str]:
     """
-    Discover failing tests by running pytest.
+    Discover failing tests by running pytest or using pre-captured output.
 
     Returns:
         pytest output if there are failures, None if all tests pass
     """
+    # Check if we have pre-captured test failure output from CI
+    if os.path.exists("pytest-output.txt"):
+        logger.info("Using pre-captured test failure output from CI")
+        try:
+            with open("pytest-output.txt", 'r') as f:
+                output = f.read()
+            
+            if 'FAILED' in output or 'ERROR' in output or 'AssertionError' in output:
+                logger.info(f"Found test failures in pre-captured output")
+                return output
+            else:
+                logger.info("No test failures found in pre-captured output")
+                return None
+        except Exception as e:
+            logger.warning(f"Error reading pre-captured output: {e}, falling back to pytest")
+    
+    # Fall back to running pytest directly
     try:
         logger.info("Running pytest to discover test failures...")
         result = subprocess.run(
-            ['pytest', '-q'],
+            ['pytest', 'sentries/', '--tb=short', '-q'],
             capture_output=True,
             text=True,
             timeout=300  # 5 minutes timeout
@@ -45,7 +62,7 @@ def discover_test_failures() -> Optional[str]:
 
         # Check if there are actual test failures (not just collection errors)
         output = result.stdout + result.stderr
-        if "FAILED" in output or "ERROR" in output:
+        if "FAILED" in output or "ERROR" in output or "AssertionError" in output:
             logger.info(f"Found test failures: {result.returncode} tests failed")
             return output
         else:
