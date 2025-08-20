@@ -5,6 +5,7 @@ End-to-End Testing Script for Sentries
 This script creates a comprehensive test environment to verify that
 all Sentries components work together correctly.
 """
+import re
 
 import os
 import shutil

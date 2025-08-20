@@ -4,9 +4,10 @@ Installation script for Sentries - Automated test and documentation maintenance.
 
 This script helps users quickly set up Sentries in their repository.
 """
-
-import os
 import sys
+
+
+
 import subprocess
 import shutil
 from pathlib import Path

@@ -8,6 +8,7 @@ This script demonstrates the complete end-to-end workflow:
 3. DocSentry updates documentation
 4. Shows the complete automation pipeline
 """
+import re
 
 import os
 import subprocess

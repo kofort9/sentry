@@ -3,9 +3,10 @@
 TestSentry: Keeps tests/** green by proposing test-only patches.
 """
 import os
-import sys
+
+
 import subprocess
-import json
+
 from typing import List, Dict, Optional
 from .runner_common import (
     setup_logging, get_logger, validate_environment, get_short_sha,
@@ -230,7 +231,7 @@ def create_test_fix_pr(plan: str, diff_summary: str) -> Optional[int]:
 
         # Create PR
         title = f"TestSentry: fix tests for {short_sha}"
-        body = f"""## Test Fixes
+        body = """## Test Fixes
 
 **Plan:**
 {plan}

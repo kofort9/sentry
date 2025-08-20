@@ -3,9 +3,11 @@
 Script to fix common flake8 issues automatically.
 This helps clean up code before manual review.
 """
-
 import os
 import re
+
+
+
 from pathlib import Path
 
 def fix_trailing_whitespace(file_path):
@@ -120,7 +122,7 @@ def main():
                         changed_files += 1
                     print()
 
-    print(f"🎯 Summary:")
+    print("🎯 Summary:")
     print(f"  Total files processed: {total_files}")
     print(f"  Files changed: {changed_files}")
     print(f"  Files unchanged: {total_files - changed_files}")

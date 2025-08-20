@@ -2,8 +2,8 @@
 """
 Sentries Setup CLI Wrapper
 """
-import sys
 import os
+import sys
 
 # Add scripts directory to path
 scripts_dir = os.path.join(os.path.dirname(__file__), '..', 'scripts')

@@ -3,8 +3,9 @@
 DocSentry: Keeps docs in sync by proposing docs-only patches.
 """
 import os
-import sys
 import json
+
+
 import subprocess
 from typing import List, Dict, Optional, Tuple
 from .runner_common import (
@@ -90,7 +91,7 @@ def get_diff_summary() -> Optional[str]:
 
         # Get list of changed files
         result = subprocess.run(
-            ['git', 'diff', '--name-status', f'origin/{base_branch}...HEAD'],
+            ['git', 'di', '--name-status', f'origin/{base_branch}...HEAD'],
             capture_output=True,
             text=True,
             timeout=30
@@ -112,7 +113,7 @@ def get_diff_summary() -> Optional[str]:
 
         # Get actual diff content (limited to avoid context overflow)
         diff_result = subprocess.run(
-            ['git', 'diff', '--stat', f'origin/{base_branch}...HEAD'],
+            ['git', 'di', '--stat', f'origin/{base_branch}...HEAD'],
             capture_output=True,
             text=True,
             timeout=30
@@ -122,7 +123,7 @@ def get_diff_summary() -> Optional[str]:
         if diff_result.returncode == 0:
             diff_summary = diff_result.stdout
 
-        return f"Changed files:\n" + "\n".join(changed_files) + f"\n\nDiff summary:\n{diff_summary}"
+        return "Changed files:\n" + "\n".join(changed_files) + f"\n\nDiff summary:\n{diff_summary}"
 
     except Exception as e:
         logger.error(f"Error getting diff summary: {e}")
@@ -143,7 +144,7 @@ def plan_doc_updates(title: str, body: str, diff_summary: str) -> Optional[str]:
     try:
         params = get_default_params("planner")
 
-        context = f"""PR Title: {title}
+        context = """PR Title: {title}
 
 PR Description:
 {body}
@@ -263,7 +264,7 @@ def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
 
         # Create PR
         title = f"DocSentry: docs for {short_sha}"
-        body = f"""## Documentation Updates
+        body = """## Documentation Updates
 
 **Plan:**
 {plan}

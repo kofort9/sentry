@@ -1,8 +1,9 @@
 """
 Diff utilities for validating and applying unified diffs.
 """
-import re
 import os
+import re
+
 import subprocess
 from typing import List, Tuple, Optional
 from .runner_common import get_logger, TESTS_ALLOWLIST, DOCS_ALLOWLIST

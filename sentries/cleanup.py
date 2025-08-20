@@ -6,6 +6,9 @@ Cleans up all Sentries-created artifacts including branches, PRs, and metadata.
 """
 import os
 import sys
+import json
+
+
 import argparse
 import subprocess
 from datetime import datetime, timedelta
@@ -22,6 +25,8 @@ logger = get_logger(__name__)
 
 class SentriesCleanupManager:
     def __init__(self, repo_path: str = ".", dry_run: bool = False):
+
+
         self.repo_path = repo_path
         self.dry_run = dry_run
         self.cleanup_stats = {
@@ -221,7 +226,7 @@ class SentriesCleanupManager:
                         print(f"      ❌ Failed to close PR #{pr_number}")
                         self.cleanup_stats['errors'] += 1
                 else:
-                    print(f"      ⚠️  GitHub token not configured, cannot close PR")
+                    print("      ⚠️  GitHub token not configured, cannot close PR")
             else:
                 print(f"      🔍 Would close PR #{pr_number}")
 

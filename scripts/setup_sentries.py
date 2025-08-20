@@ -4,10 +4,11 @@ Sentries Setup Script
 
 Automated setup and configuration for Sentries with LLM management.
 """
-import argparse
 import os
 import sys
-import json
+import argparse
+
+
 import subprocess
 import requests
 from pathlib import Path
@@ -22,6 +23,8 @@ logger = get_logger(__name__)
 
 class SentriesSetup:
     def __init__(self):
+
+
         self.ollama_base = "http://127.0.0.1:11434"
         self.required_models = {
             "planner": {
@@ -149,7 +152,7 @@ class SentriesSetup:
             required_gb = max(required_gb, 10)  # Minimum 10GB
 
             if free_gb < required_gb:
-                print(f"   ❌ Insufficient disk space")
+                print("   ❌ Insufficient disk space")
                 print(f"      Available: {free_gb}GB, Required: {required_gb}GB")
                 return False
             else:
@@ -301,7 +304,7 @@ class SentriesSetup:
         # Create .env file if it doesn't exist
         env_file = Path(".env")
         if not env_file.exists():
-            env_content = f"""# Sentries Configuration
+            env_content = """# Sentries Configuration
 # LLM Configuration
 LLM_BASE=http://127.0.0.1:11434
 MODEL_PLAN={self.required_models['planner']['name']}

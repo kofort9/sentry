@@ -5,10 +5,12 @@ Sentries Status Utility
 Shows the current status of all Sentries artifacts in the repository.
 """
 import os
-import sys
 import json
-import subprocess
 from datetime import datetime
+
+
+import subprocess
+
 from typing import List, Dict
 
 from .git_utils import get_sentries_branches, get_sentries_prs
@@ -18,6 +20,8 @@ logger = get_logger(__name__)
 
 class SentriesStatusReporter:
     def __init__(self, repo_path: str = "."):
+
+
         self.repo_path = repo_path
 
     def show_status(self):
@@ -178,7 +182,7 @@ class SentriesStatusReporter:
             # Check if PR has Sentries metadata
             pr_body = pr.get('body', '')
             if '🤖 Sentries Metadata' in pr_body:
-                print(f"      ✅ Has Sentries metadata")
+                print("      ✅ Has Sentries metadata")
 
             print()
 

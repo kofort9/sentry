@@ -1,12 +1,14 @@
 """
 Git utilities for branch management, commits, and PR operations.
 """
-import os
-import re
 import json
+import re
+from datetime import datetime
+
+
 import requests
 import subprocess
-from datetime import datetime
+
 from typing import Optional, List, Dict
 from .runner_common import GITHUB_TOKEN, GITHUB_REPOSITORY, get_logger
 
@@ -71,7 +73,7 @@ def create_branch(prefix: str, sha: str = None, sentry_type: str = "unknown") ->
     try:
         # Check if branch already exists
         result = subprocess.run(
-            ['git', 'show-ref', '--verify', '--quiet', f'refs/heads/{branch_name}'],
+            ['git', 'show-re', '--verify', '--quiet', f'refs/heads/{branch_name}'],
             capture_output=True,
             timeout=10
         )
@@ -284,7 +286,7 @@ def open_pull_request(
     }
 
     # Add Sentries metadata to PR body
-    sentries_body = body + f"""
+    sentries_body = body + """
 
 ---
 **🤖 Sentries Metadata**
@@ -360,7 +362,7 @@ def add_sentries_metadata_to_pr(pr_number: int, sentry_type: str, source_branch:
         source_branch: Source branch name
     """
     try:
-        metadata_comment = f"""🤖 **Sentries Metadata**
+        metadata_comment = """🤖 **Sentries Metadata**
 
 - **Sentry Type**: {sentry_type}
 - **Source Branch**: `{source_branch}`

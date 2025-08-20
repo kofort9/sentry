@@ -5,8 +5,9 @@ Tests connectivity to Ollama and model availability.
 """
 import os
 import sys
+
+
 import requests
-import json
 
 def test_ollama_connectivity():
     """Test basic connectivity to Ollama."""

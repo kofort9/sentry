@@ -8,16 +8,16 @@ CodeSentry scans repositories to identify:
 3. Test coverage gaps
 4. Documentation synchronization opportunities
 """
-
-import os
 import sys
-import re
+
+
+
+
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Tuple
 from dataclasses import dataclass
 from git import Repo, InvalidGitRepositoryError
 import ast
-import logging
 
 from .banner import show_sentry_banner
 from .runner_common import get_logger, TESTS_ALLOWLIST, DOCS_ALLOWLIST
@@ -48,6 +48,8 @@ class CodeAnalyzer:
     """Analyzes code for testing and documentation opportunities."""
 
     def __init__(self, repo_path: str = "."):
+
+
         self.repo_path = Path(repo_path).resolve()
         self.repo = None
         self.test_files = set()
@@ -336,6 +338,8 @@ class CodeSentry:
     """Main CodeSentry class for analyzing and reporting code candidates."""
 
     def __init__(self, repo_path: str = "."):
+
+
         self.analyzer = CodeAnalyzer(repo_path)
         self.results = None
 

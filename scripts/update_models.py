@@ -6,12 +6,12 @@ Check for and install better versions of LLM models.
 """
 import os
 import sys
-import json
+
+
 import subprocess
 import requests
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from datetime import datetime
 
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,6 +22,8 @@ logger = get_logger(__name__)
 
 class ModelUpdater:
     def __init__(self):
+
+
         self.ollama_base = "http://127.0.0.1:11434"
 
         # Model recommendations with quality tiers
@@ -348,7 +350,7 @@ class ModelUpdater:
         """Update .env file with new model."""
         env_file = Path(".env")
         if not env_file.exists():
-            print(f"      ℹ️  .env file not found, skipping update")
+            print("      ℹ️  .env file not found, skipping update")
             return
 
         try:
