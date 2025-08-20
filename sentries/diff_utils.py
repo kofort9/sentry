@@ -3,6 +3,7 @@ Diff utilities for validating and applying unified diffs.
 """
 import os
 import re
+import fnmatch
 
 
 import subprocess
@@ -32,6 +33,10 @@ def is_allowed_path(path: str, allowlist: List[str]) -> bool:
             # Recursive pattern (e.g., "docs/**")
             base_pattern = pattern[:-2]
             if path.startswith(base_pattern):
+                return True
+        elif "*" in pattern:
+            # Glob pattern (e.g., "sentries/test_*.py")
+            if fnmatch.fnmatch(path, pattern):
                 return True
         else:
             # Exact file pattern (e.g., "README.md")
