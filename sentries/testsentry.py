@@ -135,14 +135,26 @@ def plan_test_fixes(context: str) -> Optional[str]:
         ]
 
         logger.info("Planning test fixes with LLM...")
+        logger.info(f"Sending context to LLM planner (length: {len(context)}):")
+        logger.info("=" * 50)
+        logger.info(context)
+        logger.info("=" * 50)
+        
         response = chat(
             model=MODEL_PLAN,
             messages=messages,
             **params
         )
 
+        # Log the full LLM response for debugging
+        logger.info(f"LLM Planner Response (length: {len(response)}):")
+        logger.info("=" * 50)
+        logger.info(response)
+        logger.info("=" * 50)
+
         if "ABORT" in response.upper():
             logger.info("LLM planner returned ABORT - non-test code changes required")
+            logger.info("This suggests the LLM thinks production code needs to change")
             return None
 
         logger.info("Planning completed successfully")
