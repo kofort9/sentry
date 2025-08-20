@@ -7,8 +7,13 @@ on:
     types: [ opened, synchronize, reopened ]
     branches: [ main, master, develop ]
 
+concurrency:
+  group: sentry-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  test:
+  # Always run on GitHub-hosted runners (fast, reliable)
+  test-basic:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -44,6 +49,7 @@ jobs:
           # Test that all CLI commands are properly installed
           testsentry --help
           docsentry --help
+          codesentry --help
           sentries-cleanup --help
           sentries-status --help
           sentries-setup --help
@@ -53,8 +59,17 @@ jobs:
         run: |
           python -c "
           from sentries import banner, chat, prompts, diff_utils, git_utils, runner_common
-          from sentries import testsentry, docsentry, cleanup, status, setup_cli, update_models_cli
+          from sentries import testsentry, docsentry, codesentry, cleanup, status, setup_cli, update_models_cli
           print('All modules imported successfully')
+          "
+      
+      - name: Test CodeSentry Analysis
+        run: |
+          python -c "
+          from sentries.codesentry import CodeSentry
+          codesentry = CodeSentry()
+          results = codesentry.analyze()
+          print(f'CodeSentry found {results.summary[\"total_candidates\"]} improvement candidates')
           "
       
       - name: Upload coverage to Codecov
@@ -63,9 +78,108 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
 
+  # Run on self-hosted runner only when LLM operations are needed
+  test-sentry-llm:
+    runs-on: self-hosted
+    needs: test-basic
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Check Ollama Status
+        id: ollama-check
+        run: |
+          if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null; then
+            echo "status=ready" >> $GITHUB_OUTPUT
+            echo "✅ Ollama is running and ready"
+          else
+            echo "status=not-ready" >> $GITHUB_OUTPUT
+            echo "❌ Ollama is not running"
+            echo "Please start Ollama and rerun this workflow"
+            exit 1
+          fi
+      
+      - name: Check if LLM jobs should run
+        id: check-llm
+        run: |
+          # Only run LLM jobs if there are meaningful code changes
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Get changed files
+            changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+            
+            # Check if there are source files changed (excluding tests, docs, and config)
+            source_changes=$(echo "$changed_files" | grep -v -E '(test_|_test\.py|tests/|docs/|\.md$|\.yml$|\.yaml$|\.toml$|\.gitignore)' || true)
+            
+            if [ -n "$source_changes" ]; then
+              echo "should-run=true" >> $GITHUB_OUTPUT
+              echo "reason=Source code changes detected" >> $GITHUB_OUTPUT
+              echo "✅ LLM jobs should run - meaningful changes found"
+            else
+              echo "should-run=false" >> $GITHUB_OUTPUT
+              echo "reason=No meaningful source code changes" >> $GITHUB_OUTPUT
+              echo "⏭️  LLM jobs skipped - no meaningful changes"
+            fi
+          else
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            echo "reason=Not a PR event" >> $GITHUB_OUTPUT
+            echo "✅ LLM jobs should run - not a PR event"
+          fi
+      
+      - name: Install Sentries
+        if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
+        run: |
+          pip install -e .
+      
+      - name: Run TestSentry with LLM
+        if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
+        env:
+          LLM_BASE: http://127.0.0.1:11434
+          MODEL_PLAN: ${{ vars.MODEL_PLAN || 'llama3.1:8b-instruct-q4_K_M' }}
+          MODEL_PATCH: ${{ vars.MODEL_PATCH || 'deepseek-coder:6.7b-instruct-q5_K_M' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          testsentry
+      
+      - name: Run DocSentry with LLM
+        if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
+        env:
+          LLM_BASE: http://127.0.0.1:11434
+          MODEL_PLAN: ${{ vars.MODEL_PLAN || 'llama3.1:8b-instruct-q4_K_M' }}
+          MODEL_PATCH: ${{ vars.MODEL_PATCH || 'deepseek-coder:6.7b-instruct-q5_K_M' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: |
+          docsentry
+      
+      - name: LLM Jobs Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check-llm.outputs.should-run }}" = "true" ]; then
+            if [ "${{ steps.ollama-check.outputs.status }}" = "ready" ]; then
+              echo "🎉 LLM jobs completed successfully!"
+              echo "📋 Reason: ${{ steps.check-llm.outputs.reason }}"
+              echo "🔗 Check the PR for any improvements created by sentries"
+            else
+              echo "❌ LLM jobs failed - Ollama not available"
+            fi
+          else
+            echo "⏭️  LLM jobs skipped"
+            echo "📋 Reason: ${{ steps.check-llm.outputs.reason }}"
+            echo "💡 This is normal - LLM jobs only run on meaningful code changes"
+          fi
+
   integration-test:
     runs-on: ubuntu-latest
-    needs: test
+    needs: test-basic
     if: github.event_name == 'pull_request'
     
     steps:
