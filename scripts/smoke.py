@@ -164,18 +164,8 @@ def main():
             print(f"❌ Basic imports failed: {e}")
             sys.exit(1)
         
-        # Test 2: CLI commands available
-        try:
-            import subprocess
-            result = subprocess.run(['testsentry', '--help'], capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                print("✅ CLI commands: OK")
-            else:
-                print("❌ CLI commands not working")
-                sys.exit(1)
-        except Exception as e:
-            print(f"❌ CLI test failed: {e}")
-            sys.exit(1)
+        # Test 2: CLI commands available (skip in CI as it's tested separately)
+        print("⏭️  CLI commands test: Skipped in CI (tested in separate workflow step)")
         
         print("=" * 40)
         print("✅ Basic smoke tests passed!")
