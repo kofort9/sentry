@@ -264,5 +264,13 @@ def test_obvious_failure():
     assert False, "This test is intentionally failing - TestSentry should fix this"
 
 
+def test_guaranteed_failure():
+    """A test that will definitely fail in any environment."""
+    # This test is intentionally failing to trigger TestSentry
+    # TestSentry should fix this by changing the assertion
+    result = 1 + 1
+    assert result == 999, f"This will always fail: 1 + 1 = {result}, not 999"
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
