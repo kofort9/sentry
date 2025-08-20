@@ -2,9 +2,11 @@
 Shared utilities for Sentries runners.
 """
 import os
-import logging
 import sys
+import logging
 from typing import Optional
+
+
 
 # Constants
 TESTS_ALLOWLIST = ["tests/"]
@@ -44,23 +46,23 @@ def validate_environment() -> bool:
     if not GITHUB_TOKEN:
         logging.error("GITHUB_TOKEN environment variable is required")
         return False
-    
+
     if not GITHUB_REPOSITORY:
         logging.error("GITHUB_REPOSITORY environment variable is required")
         return False
-    
+
     return True
 
 def get_short_sha() -> Optional[str]:
     """Extract short SHA from GITHUB_REF."""
     if not GITHUB_REF:
         return None
-    
+
     # GITHUB_REF format: refs/heads/branch-name or refs/pull/123/merge
     if GITHUB_REF.startswith("refs/pull/"):
         # For pull requests, we'll use the event payload
         return None
-    
+
     # For branches, extract the branch name and use as identifier
     return GITHUB_REF.replace("refs/heads/", "")[:8]
 

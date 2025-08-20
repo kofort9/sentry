@@ -1,7 +1,7 @@
 """
 Chat interface for communicating with LLM models.
 """
-import json
+
 import requests
 from typing import List, Dict, Any, Optional
 from .runner_common import LLM_BASE, get_logger
@@ -17,17 +17,17 @@ def chat(
 ) -> str:
     """
     Send a chat request to the LLM.
-    
+
     Args:
         model: Model name to use
         messages: List of message dictionaries with 'role' and 'content'
         temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative)
         max_tokens: Maximum tokens to generate
         num_ctx: Context window size
-    
+
     Returns:
         Generated response text
-    
+
     Raises:
         requests.RequestException: If the request fails
     """
@@ -45,7 +45,7 @@ def _chat_ollama(
 ) -> str:
     """Send chat request to Ollama API."""
     url = f"{LLM_BASE}/api/chat"
-    
+
     # Convert OpenAI-style messages to Ollama format
     prompt = ""
     for msg in messages:
@@ -55,9 +55,9 @@ def _chat_ollama(
             prompt += f"User: {msg['content']}\n\n"
         elif msg["role"] == "assistant":
             prompt += f"Assistant: {msg['content']}\n\n"
-    
+
     prompt += "Assistant: "
-    
+
     payload = {
         "model": model,
         "prompt": prompt,
@@ -68,11 +68,11 @@ def _chat_ollama(
             "num_ctx": num_ctx
         }
     }
-    
+
     logger.debug(f"Sending request to Ollama: {url}")
     response = requests.post(url, json=payload, timeout=60)
     response.raise_for_status()
-    
+
     result = response.json()
     return result.get("message", {}).get("content", "").strip()
 
@@ -84,7 +84,7 @@ def _chat_openai_style(
 ) -> str:
     """Send chat request to OpenAI-style API."""
     url = f"{LLM_BASE}/v1/chat/completions"
-    
+
     payload = {
         "model": model,
         "messages": messages,
@@ -92,21 +92,21 @@ def _chat_openai_style(
         "max_tokens": max_tokens,
         "stream": False
     }
-    
+
     logger.debug(f"Sending request to OpenAI-style API: {url}")
     response = requests.post(url, json=payload, timeout=60)
     response.raise_for_status()
-    
+
     result = response.json()
     return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
 def get_default_params(model_type: str) -> Dict[str, Any]:
     """
     Get default parameters for different model types.
-    
+
     Args:
         model_type: Either 'planner' or 'patcher'
-    
+
     Returns:
         Dictionary with default parameters
     """
