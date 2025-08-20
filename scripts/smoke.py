@@ -144,40 +144,83 @@ def main():
         print(f"   Models: {len(status['models'])} available")
     print()
 
-    # Use Ollama manager for automatic lifecycle management
-    try:
-        with OllamaManager():
-            print("🧪 Running smoke tests with managed Ollama...")
-            print()
-
-            # Test 1: Ollama connectivity
-            if not test_ollama_connectivity():
+    # Check if we're in a CI environment where Ollama might not be available
+    in_ci = os.getenv('CI') == 'true'
+    if in_ci:
+        print("🏗️  CI environment detected - running basic tests only")
+        print("   (Ollama tests will run on self-hosted runners)")
+        print()
+        
+        # Basic tests that don't require Ollama
+        print("🧪 Running basic smoke tests...")
+        print()
+        
+        # Test 1: Basic imports
+        try:
+            from sentries.banner import show_sentry_banner
+            from sentries import testsentry, docsentry, codesentry
+            print("✅ Basic imports: OK")
+        except ImportError as e:
+            print(f"❌ Basic imports failed: {e}")
+            sys.exit(1)
+        
+        # Test 2: CLI commands available
+        try:
+            import subprocess
+            result = subprocess.run(['testsentry', '--help'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print("✅ CLI commands: OK")
+            else:
+                print("❌ CLI commands not working")
                 sys.exit(1)
+        except Exception as e:
+            print(f"❌ CLI test failed: {e}")
+            sys.exit(1)
+        
+        print("=" * 40)
+        print("✅ Basic smoke tests passed!")
+        print("\nNote: Ollama tests skipped in CI environment")
+        print("Full tests will run on self-hosted runners")
+        
+    else:
+        # Local environment - try to use Ollama
+        print("🏠 Local environment detected - running full Ollama tests...")
+        print()
+        
+        # Use Ollama manager for automatic lifecycle management
+        try:
+            with OllamaManager():
+                print("🧪 Running smoke tests with managed Ollama...")
+                print()
 
-            # Test 2: Model availability
-            if not test_model_availability():
-                sys.exit(1)
+                # Test 1: Ollama connectivity
+                if not test_ollama_connectivity():
+                    sys.exit(1)
 
-            # Test 3: Model response
-            if not test_model_response():
-                sys.exit(1)
+                # Test 2: Model availability
+                if not test_model_availability():
+                    sys.exit(1)
 
-            print("=" * 40)
-            print("✅ All smoke tests passed!")
-            print("\nYou can now run:")
-            print("  testsentry")
-            print("  docsentry")
+                # Test 3: Model response
+                if not test_model_response():
+                    sys.exit(1)
 
-    except RuntimeError as e:
-        print(f"\n❌ Failed to set up Ollama: {e}")
-        print("\nPlease ensure:")
-        print("1. Ollama is installed (visit https://ollama.com/download)")
-        print("2. You have internet connection for model download")
-        print("3. Sufficient disk space for the model (~4-8GB)")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Smoke test interrupted by user")
-        sys.exit(0)
+                print("=" * 40)
+                print("✅ All smoke tests passed!")
+                print("\nYou can now run:")
+                print("  testsentry")
+                print("  docsentry")
+
+        except RuntimeError as e:
+            print(f"\n❌ Failed to set up Ollama: {e}")
+            print("\nPlease ensure:")
+            print("1. Ollama is installed (visit https://ollama.com/download)")
+            print("2. You have internet connection for model download")
+            print("3. Sufficient disk space for the model (~4-8GB)")
+            sys.exit(1)
+        except KeyboardInterrupt:
+            print("\n\n⚠️  Smoke test interrupted by user")
+            sys.exit(0)
 
 
 if __name__ == "__main__":
