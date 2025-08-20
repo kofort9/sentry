@@ -244,13 +244,24 @@ def test_complex_business_logic_disabled_rule():
 
 def test_failing_function():
     """This test will fail and should be fixed by TestSentry."""
-    assert 1 == 2, "This assertion will fail"
+    # This test is intentionally failing to trigger TestSentry
+    # TestSentry should fix this by changing 2 to 1
+    assert 1 == 2, "This assertion will fail - TestSentry should fix this"
 
 
 def test_another_failing_test():
     """Another failing test for variety."""
+    # This test is intentionally failing to trigger TestSentry
+    # TestSentry should fix this by changing 5 to 4
     result = 2 + 2
-    assert result == 5, f"Expected 5, got {result}"
+    assert result == 5, f"Expected 5, got {result} - TestSentry should fix this"
+
+
+def test_obvious_failure():
+    """A very obvious failing test that should definitely be detected."""
+    # This test is intentionally failing to trigger TestSentry
+    # TestSentry should fix this by changing False to True
+    assert False, "This test is intentionally failing - TestSentry should fix this"
 
 
 if __name__ == "__main__":
