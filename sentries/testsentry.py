@@ -140,17 +140,36 @@ def plan_test_fixes(context: str) -> Optional[str]:
         logger.info(context)
         logger.info("=" * 50)
         
+        # Try primary model first
+        logger.info(f"Trying primary model: {MODEL_PLAN}")
         response = chat(
             model=MODEL_PLAN,
             messages=messages,
             **params
         )
+        
+        # If primary model fails, try fallback model
+        if not response or len(response.strip()) == 0:
+            logger.warning("Primary model returned empty response, trying fallback model...")
+            fallback_model = "deepseek-coder:6.7b-instruct-q5_K_M"  # Use the patcher model as fallback
+            logger.info(f"Trying fallback model: {fallback_model}")
+            response = chat(
+                model=fallback_model,
+                messages=messages,
+                **params
+            )
 
         # Log the full LLM response for debugging
         logger.info(f"LLM Planner Response (length: {len(response)}):")
         logger.info("=" * 50)
         logger.info(response)
         logger.info("=" * 50)
+
+        # Handle empty or invalid responses
+        if not response or len(response.strip()) == 0:
+            logger.error("LLM planner returned empty response - this indicates a model issue")
+            logger.error("Empty responses are treated as ABORT to prevent invalid fixes")
+            return None
 
         if "ABORT" in response.upper():
             logger.info("LLM planner returned ABORT - non-test code changes required")
