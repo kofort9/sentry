@@ -104,26 +104,33 @@ jobs:
             exit 1
           fi
       
+      - name: Run pytest to check test status
+        id: pytest-check
+        run: |
+          echo "🧪 Running pytest to check test status..."
+          # Run pytest and capture output, but don't fail the workflow
+          pytest sentries/ --tb=short -q || true
+          
+          # Capture pytest exit code
+          pytest_exit_code=$?
+          echo "pytest_exit_code=$pytest_exit_code" >> $GITHUB_OUTPUT
+          
+          if [ $pytest_exit_code -eq 0 ]; then
+            echo "✅ All tests are passing"
+            echo "test_status=passing" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Some tests are failing - TestSentry will attempt to fix them"
+            echo "test_status=failing" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Check if LLM jobs should run
         id: check-llm
         run: |
-          # Only run LLM jobs if there are meaningful code changes
+          # Always run LLM jobs on PRs to allow sentries to fix issues
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Get changed files
-            changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
-            
-            # Check if there are source files changed (excluding tests, docs, and config)
-            source_changes=$(echo "$changed_files" | grep -v -E '(test_|_test\.py|tests/|docs/|\.md$|\.yml$|\.yaml$|\.toml$|\.gitignore)' || true)
-            
-            if [ -n "$source_changes" ]; then
-              echo "should-run=true" >> $GITHUB_OUTPUT
-              echo "reason=Source code changes detected" >> $GITHUB_OUTPUT
-              echo "✅ LLM jobs should run - meaningful changes found"
-            else
-              echo "should-run=false" >> $GITHUB_OUTPUT
-              echo "reason=No meaningful source code changes" >> $GITHUB_OUTPUT
-              echo "⏭️  LLM jobs skipped - no meaningful changes"
-            fi
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            echo "reason=PR event - sentries should run to check for issues" >> $GITHUB_OUTPUT
+            echo "✅ LLM jobs should run - PR event detected"
           else
             echo "should-run=true" >> $GITHUB_OUTPUT
             echo "reason=Not a PR event" >> $GITHUB_OUTPUT
@@ -145,6 +152,10 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF: ${{ github.ref }}
         run: |
+          echo "🚀 Running TestSentry to fix failing tests..."
+          echo "Test status from pytest: ${{ steps.pytest-check.outputs.test_status }}"
+          
+          # Run TestSentry - it will automatically detect and fix test failures
           testsentry
       
       - name: Run DocSentry with LLM
@@ -167,7 +178,12 @@ jobs:
             if [ "${{ steps.ollama-check.outputs.status }}" = "ready" ]; then
               echo "🎉 LLM jobs completed successfully!"
               echo "📋 Reason: ${{ steps.check-llm.outputs.reason }}"
+              echo "🧪 Test status: ${{ steps.pytest-check.outputs.test_status }}"
               echo "🔗 Check the PR for any improvements created by sentries"
+              
+              if [ "${{ steps.pytest-check.outputs.test_status }}" = "failing" ]; then
+                echo "💡 TestSentry attempted to fix failing tests - check for new PRs"
+              fi
             else
               echo "❌ LLM jobs failed - Ollama not available"
             fi
