@@ -10,15 +10,19 @@ This script demonstrates the complete end-to-end workflow:
 """
 
 import os
-import sys
 import subprocess
-import time
+import sys
+
 from pathlib import Path
 
-# Add the parent directory to the path so we can import sentries
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Try to import sentries, add parent directory to path if needed
+try:
+    from sentries.banner import show_sentry_banner
+except ImportError:
+    # Add the parent directory to the path so we can import sentries
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from sentries.banner import show_sentry_banner
 
-from sentries.banner import show_sentry_banner
 
 def run_command(cmd: str, description: str, capture_output: bool = False) -> bool:
     """Run a command and display results."""
@@ -46,6 +50,7 @@ def run_command(cmd: str, description: str, capture_output: bool = False) -> boo
     except Exception as e:
         print(f"❌ Error running {description}: {e}")
         return False
+
 
 def check_prerequisites():
     """Check if all prerequisites are met."""
@@ -78,6 +83,7 @@ def check_prerequisites():
     print("✅ All prerequisites met")
     return True
 
+
 def demonstrate_codesentry():
     """Demonstrate CodeSentry functionality."""
     print("\n🔍 STEP 1: CodeSentry Analysis")
@@ -99,6 +105,7 @@ def demonstrate_codesentry():
         print("\n⚠️  CodeSentry analysis had issues, but we can continue with the demo.")
 
     return success
+
 
 def demonstrate_testsentry():
     """Demonstrate TestSentry functionality."""
@@ -128,6 +135,7 @@ def demonstrate_testsentry():
 
     return success
 
+
 def demonstrate_docsentry():
     """Demonstrate DocSentry functionality."""
     print("\n📚 STEP 3: DocSentry Documentation Updates")
@@ -150,6 +158,7 @@ def demonstrate_docsentry():
         print("\n⚠️  DocSentry had issues, but this demonstrates the workflow.")
 
     return True  # DocSentry might not have changes to make
+
 
 def show_workflow_summary():
     """Show a summary of the complete workflow."""
@@ -189,6 +198,7 @@ def show_workflow_summary():
     print("    • End-to-end workflow validation")
     print("    • Automated quality assurance")
     print("    • Production-ready reliability")
+
 
 def main():
     """Main demonstration function."""

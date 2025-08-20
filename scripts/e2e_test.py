@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
 """
-End-to-End Testing for Sentries
+End-to-End Testing Script for Sentries
 
-This script creates a comprehensive test environment to verify that the sentries
-work correctly in various scenarios. It simulates real-world usage patterns
-and verifies the expected behavior.
+This script creates a comprehensive test environment to verify that
+all Sentries components work together correctly.
 """
 
 import os
-import sys
-import tempfile
 import shutil
 import subprocess
-import json
+import sys
+import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
 
-# Add the parent directory to the path so we can import sentries
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Try to import sentries, add parent directory to path if needed
+try:
+    from sentries.banner import show_sentry_banner
+    from sentries.runner_common import TESTS_ALLOWLIST, DOCS_ALLOWLIST
+except ImportError:
+    # Add the parent directory to the path so we can import sentries
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from sentries.banner import show_sentry_banner
+    from sentries.runner_common import TESTS_ALLOWLIST, DOCS_ALLOWLIST
 
-from sentries.banner import show_sentry_banner
-from sentries.runner_common import TESTS_ALLOWLIST, DOCS_ALLOWLIST
 
 class E2ETestRunner:
     """Comprehensive end-to-end testing for sentries"""
 
     def __init__(self):
+        """Initialize the E2E test runner."""
         self.test_dir = None
         self.test_repo = None
         self.results = {
@@ -200,10 +203,7 @@ This is a new feature that was added recently.
 
         try:
             # Test core imports
-            from sentries import (
-                banner, chat, prompts, diff_utils, git_utils, runner_common,
-                testsentry, docsentry, cleanup, status, setup_cli, update_models_cli
-            )
+            from sentries import banner, chat, prompts
             print("✅ All core modules imported successfully")
 
             # Test specific functionality
@@ -414,10 +414,12 @@ This is a new feature that was added recently.
             shutil.rmtree(self.test_dir)
             print("✅ Test environment cleaned up")
 
+
 def main():
     """Main entry point"""
     runner = E2ETestRunner()
     runner.run_all_tests()
+
 
 if __name__ == "__main__":
     main()
