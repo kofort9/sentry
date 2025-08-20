@@ -1,0 +1,16 @@
+# Sentries Configuration
+# This file contains configuration for Sentries automation
+
+# LLM Configuration
+LLM_BASE=http://127.0.0.1:11434
+MODEL_PLAN=llama3.1:8b-instruct-q4_K_M
+MODEL_PATCH=deepseek-coder:6.7b-instruct-q5_K_M
+
+# GitHub Configuration
+# GITHUB_TOKEN=your_github_token_here
+# GITHUB_REPOSITORY=owner/repo
+# GITHUB_REF=refs/heads/main
+
+# Sentries Configuration
+TESTS_ALLOWLIST=[]  # Add test file patterns to ignore
+DOCS_ALLOWLIST=[]   # Add documentation patterns to ignore
