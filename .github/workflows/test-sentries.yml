@@ -43,8 +43,23 @@ jobs:
           python scripts/smoke.py
       
       - name: Run unit tests
+        id: unit-tests
         run: |
-          pytest sentries/ --cov=sentries --cov-report=xml
+          # Run pytest and capture output to file, but don't fail the workflow
+          pytest sentries/ --cov=sentries --cov-report=xml --tb=short -q > pytest-output.txt 2>&1 || true
+          
+          # Capture pytest exit code and output
+          pytest_exit_code=$?
+          echo "pytest_exit_code=$pytest_exit_code" >> $GITHUB_OUTPUT
+          
+          if [ $pytest_exit_code -eq 0 ]; then
+            echo "test_status=passing" >> $GITHUB_OUTPUT
+            echo "✅ All tests are passing"
+          else
+            echo "test_status=failing" >> $GITHUB_OUTPUT
+            echo "❌ Some tests are failing - TestSentry will attempt to fix them"
+            echo "📄 Test failure output saved to pytest-output.txt"
+          fi
       
       - name: Test CLI installation
         run: |
@@ -79,6 +94,15 @@ jobs:
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+      
+      - name: Upload test results
+        if: steps.unit-tests.outputs.test_status == 'failing'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failures-${{ matrix.python-version }}
+          path: |
+            pytest-output.txt
+          retention-days: 1
 
   # Run on self-hosted runner only when LLM operations are needed
   test-sentry-llm:
@@ -93,6 +117,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       
+      - name: Download test failure artifacts
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-failures-*
+          merge-multiple: true
+      
       - name: Check Ollama Status
         id: ollama-check
         run: |
@@ -106,23 +137,21 @@ jobs:
             exit 1
           fi
       
-      - name: Run pytest to check test status
+      - name: Check test status from artifacts
         id: pytest-check
         run: |
-          echo "🧪 Running pytest to check test status..."
-          # Run pytest and capture output, but don't fail the workflow
-          pytest sentries/ --tb=short -q || true
+          echo "🧪 Checking test status from GitHub-hosted runner results..."
           
-          # Capture pytest exit code
-          pytest_exit_code=$?
-          echo "pytest_exit_code=$pytest_exit_code" >> $GITHUB_OUTPUT
-          
-          if [ $pytest_exit_code -eq 0 ]; then
-            echo "✅ All tests are passing"
-            echo "test_status=passing" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Some tests are failing - TestSentry will attempt to fix them"
+          # Check if we have test failure artifacts
+          if [ -f "pytest-output.txt" ]; then
+            echo "📄 Found test failure output from GitHub-hosted runners"
             echo "test_status=failing" >> $GITHUB_OUTPUT
+            echo "❌ Tests are failing - TestSentry will attempt to fix them"
+            echo "📋 Test failure details:"
+            cat pytest-output.txt
+          else
+            echo "✅ No test failure artifacts found - tests are likely passing"
+            echo "test_status=passing" >> $GITHUB_OUTPUT
           fi
       
       - name: Check if LLM jobs should run
