@@ -74,14 +74,19 @@ def _chat_ollama(
 
     logger.debug(f"Sending request to Ollama: {url}")
     try:
-        response = requests.post(url, json=payload, timeout=60)
+        # Increase timeout for larger requests
+        timeout_seconds = 120 if len(prompt) > 1000 else 60
+        logger.debug(f"Using timeout: {timeout_seconds}s for prompt length: {len(prompt)}")
+        
+        response = requests.post(url, json=payload, timeout=timeout_seconds)
         response.raise_for_status()
 
         result = response.json()
     except Exception as e:
         logger.error(f"Error communicating with Ollama: {e}")
-        logger.error(f"Response status: {getattr(response, 'status_code', 'N/A')}")
-        logger.error(f"Response text: {getattr(response, 'text', 'N/A')}")
+        if 'response' in locals():
+            logger.error(f"Response status: {getattr(response, 'status_code', 'N/A')}")
+            logger.error(f"Response text: {getattr(response, 'text', 'N/A')}")
         raise
     
     # Debug: Log the full Ollama response

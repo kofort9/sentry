@@ -153,11 +153,15 @@ def plan_test_fixes(context: str) -> Optional[str]:
             logger.warning("Primary model returned empty response, trying fallback model...")
             fallback_model = "deepseek-coder:6.7b-instruct-q5_K_M"  # Use the patcher model as fallback
             logger.info(f"Trying fallback model: {fallback_model}")
-            response = chat(
-                model=fallback_model,
-                messages=messages,
-                **params
-            )
+            try:
+                response = chat(
+                    model=fallback_model,
+                    messages=messages,
+                    **params
+                )
+            except Exception as e:
+                logger.error(f"Fallback model also failed: {e}")
+                response = ""
 
         # Log the full LLM response for debugging
         logger.info(f"LLM Planner Response (length: {len(response)}):")
