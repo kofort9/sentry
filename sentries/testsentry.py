@@ -6,7 +6,7 @@ import os
 
 import subprocess
 
-from typing import List, Dict, Optional
+from typing import Optional
 from .runner_common import (
     setup_logging, get_logger, validate_environment, get_short_sha,
     exit_success, exit_noop, exit_failure, TESTS_ALLOWLIST,
@@ -36,16 +36,16 @@ def discover_test_failures() -> Optional[str]:
         try:
             with open("pytest-output.txt", 'r') as f:
                 output = f.read()
-            
+
             if 'FAILED' in output or 'ERROR' in output or 'AssertionError' in output:
-                logger.info(f"Found test failures in pre-captured output")
+                logger.info("Found test failures in pre-captured output")
                 return output
             else:
                 logger.info("No test failures found in pre-captured output")
                 return None
         except Exception as e:
             logger.warning(f"Error reading pre-captured output: {e}, falling back to pytest")
-    
+
     # Fall back to running pytest directly
     try:
         logger.info("Running pytest to discover test failures...")
@@ -98,7 +98,8 @@ def get_test_context(failing_tests_output: str) -> str:
             if len(parts) >= 2:
                 file_path = parts[0]
                 # Include test files from tests/ directory or sentries/test_*.py
-                if file_path.startswith('tests/') or (file_path.startswith('sentries/') and 'test_' in file_path):
+                if file_path.startswith(
+                        'tests/') or (file_path.startswith('sentries/') and 'test_' in file_path):
                     test_files.add(file_path)
 
     context = f"Test failures detected:\n\n{failing_tests_output}\n\n"
@@ -135,17 +136,18 @@ def plan_test_fixes(context: str) -> Optional[str]:
         ]
 
         logger.info("Planning test fixes with LLM...")
-        
+
         # Compress context if it's too large to reduce processing time
         if len(context) > 2000:
-            logger.info(f"Context is large ({len(context)} chars), compressing to reduce processing time...")
+            logger.info(
+                f"Context is large ({len(context)} chars), compressing to reduce processing time...")
             context = compress_test_context(context, max_chars=2000)
-        
+
         logger.info(f"Sending context to LLM planner (length: {len(context)}):")
         logger.info("=" * 50)
         logger.info(context)
         logger.info("=" * 50)
-        
+
         # Try primary model first
         logger.info(f"Trying primary model: {MODEL_PLAN}")
         response = chat(
@@ -153,7 +155,7 @@ def plan_test_fixes(context: str) -> Optional[str]:
             messages=messages,
             **params
         )
-        
+
         # If primary model fails, try fallback model
         if not response or len(response.strip()) == 0:
             logger.warning("Primary model returned empty response, trying fallback model...")

@@ -5,7 +5,7 @@ Chat interface for communicating with LLM models.
 import requests
 import json
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from .runner_common import LLM_BASE, get_logger
 
 logger = get_logger(__name__)
@@ -48,9 +48,6 @@ def _chat_ollama(
     num_ctx: int
 ) -> str:
     """Send chat request to Ollama API."""
-    # Use the generate API instead of chat API for better compatibility
-    url = f"{LLM_BASE}/api/generate"
-
     # Convert OpenAI-style messages to Ollama format
     prompt = ""
     for msg in messages:
@@ -65,7 +62,7 @@ def _chat_ollama(
 
     # Choose between streaming and non-streaming based on context size
     use_streaming = len(prompt) > 3000  # Use streaming for very large contexts
-    
+
     if use_streaming:
         logger.info(f"Using streaming mode for large context ({len(prompt)} chars)")
         return _chat_ollama_streaming(model, prompt, temperature, max_tokens, num_ctx)
@@ -95,18 +92,19 @@ def _chat_ollama_standard(
     }
 
     logger.debug(f"Sending standard request to Ollama: {url}")
-    
+
     # Smart timeout calculation based on context complexity
     base_timeout = 30  # Base time for simple requests
     char_timeout = 0.02  # 20ms per character (empirical estimate)
     buffer_timeout = 30  # Safety buffer
-    
+
     estimated_timeout = base_timeout + (len(prompt) * char_timeout) + buffer_timeout
     # Cap at reasonable maximum (5 minutes)
     timeout_seconds = min(estimated_timeout, 300)
-    
-    logger.info(f"Smart timeout calculation: {len(prompt)} chars → {timeout_seconds:.1f}s (estimated: {estimated_timeout:.1f}s)")
-    
+
+    logger.info(
+        f"Smart timeout calculation: {len(prompt)} chars → {timeout_seconds:.1f}s (estimated: {estimated_timeout:.1f}s)")
+
     try:
         response = requests.post(url, json=payload, timeout=timeout_seconds)
         response.raise_for_status()
@@ -122,13 +120,13 @@ def _chat_ollama_standard(
             logger.error(f"Response status: {getattr(response, 'status_code', 'N/A')}")
             logger.error(f"Response text: {getattr(response, 'text', 'N/A')}")
         raise
-    
+
     # Debug: Log the full Ollama response
     logger.debug(f"Ollama response: {result}")
-    
+
     # Use the generate API response format
     content = result.get("response", "")
-    
+
     logger.debug(f"Extracted content: '{content}' (length: {len(content)})")
     return content.strip()
 
@@ -155,7 +153,7 @@ def _chat_ollama_streaming(
     }
 
     logger.info(f"Starting streaming request for {len(prompt)} chars")
-    
+
     try:
         response = requests.post(url, json=payload, stream=True, timeout=300)
         response.raise_for_status()
@@ -163,7 +161,7 @@ def _chat_ollama_streaming(
         content = ""
         start_time = time.time()
         last_progress = start_time
-        
+
         for line in response.iter_lines():
             if line:
                 try:
@@ -171,26 +169,27 @@ def _chat_ollama_streaming(
                     if 'response' in data:
                         chunk = data['response']
                         content += chunk
-                        
+
                         # Log progress every 5 seconds
                         current_time = time.time()
                         if current_time - last_progress >= 5:
                             elapsed = current_time - start_time
-                            logger.info(f"Streaming progress: {len(content)} chars received in {elapsed:.1f}s")
+                            logger.info(
+                                f"Streaming progress: {len(content)} chars received in {elapsed:.1f}s")
                             last_progress = current_time
-                        
+
                         # Check if done
                         if data.get('done', False):
                             break
-                            
+
                 except json.JSONDecodeError:
                     continue
-                    
+
         elapsed = time.time() - start_time
         logger.info(f"Streaming completed: {len(content)} chars in {elapsed:.1f}s")
-        
+
         return content.strip()
-        
+
     except Exception as e:
         logger.error(f"Error during streaming: {e}")
         raise
@@ -224,28 +223,28 @@ def _chat_openai_style(
 def compress_test_context(context: str, max_chars: int = 2000) -> str:
     """
     Intelligently compress test context to reduce processing time.
-    
+
     Args:
         context: Full test failure context
         max_chars: Maximum characters to allow
-        
+
     Returns:
         Compressed context focusing on essential information
     """
     if len(context) <= max_chars:
         return context
-    
+
     logger.info(f"Compressing context from {len(context)} to ~{max_chars} chars")
-    
+
     # Extract key failure information
     lines = context.split('\n')
     compressed_lines = []
-    
+
     # Always include header
     for line in lines[:5]:  # First 5 lines usually contain summary
         if line.strip():
             compressed_lines.append(line)
-    
+
     # Find and include test failure details
     failure_section = False
     for line in lines:
@@ -258,13 +257,14 @@ def compress_test_context(context: str, max_chars: int = 2000) -> str:
         elif failure_section and line.strip() == '':
             # Stop at first empty line after failures
             break
-    
+
     # Add compression note
-    compressed_lines.append(f"\n[Context compressed from {len(context)} to {sum(len(l) for l in compressed_lines)} chars]")
-    
+    compressed_lines.append(
+        f"\n[Context compressed from {len(context)} to {sum(len(l) for l in compressed_lines)} chars]")
+
     compressed = '\n'.join(compressed_lines)
     logger.info(f"Context compressed: {len(context)} → {len(compressed)} chars")
-    
+
     return compressed
 
 
