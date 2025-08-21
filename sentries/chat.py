@@ -72,11 +72,28 @@ def _chat_ollama(
     }
 
     logger.debug(f"Sending request to Ollama: {url}")
-    response = requests.post(url, json=payload, timeout=60)
-    response.raise_for_status()
+    try:
+        response = requests.post(url, json=payload, timeout=60)
+        response.raise_for_status()
 
-    result = response.json()
-    return result.get("message", {}).get("content", "").strip()
+        result = response.json()
+    except Exception as e:
+        logger.error(f"Error communicating with Ollama: {e}")
+        logger.error(f"Response status: {getattr(response, 'status_code', 'N/A')}")
+        logger.error(f"Response text: {getattr(response, 'text', 'N/A')}")
+        raise
+    
+    # Debug: Log the full Ollama response
+    logger.debug(f"Ollama response: {result}")
+    
+    # Try different response formats
+    content = result.get("message", {}).get("content", "")
+    if not content:
+        # Try alternative response format
+        content = result.get("response", "")
+    
+    logger.debug(f"Extracted content: '{content}'")
+    return content.strip()
 
 
 def _chat_openai_style(
