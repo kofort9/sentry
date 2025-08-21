@@ -46,7 +46,8 @@ def _chat_ollama(
     num_ctx: int
 ) -> str:
     """Send chat request to Ollama API."""
-    url = f"{LLM_BASE}/api/chat"
+    # Use the generate API instead of chat API for better compatibility
+    url = f"{LLM_BASE}/api/generate"
 
     # Convert OpenAI-style messages to Ollama format
     prompt = ""
@@ -86,11 +87,8 @@ def _chat_ollama(
     # Debug: Log the full Ollama response
     logger.debug(f"Ollama response: {result}")
     
-    # Try different response formats
-    content = result.get("message", {}).get("content", "")
-    if not content:
-        # Try alternative response format
-        content = result.get("response", "")
+    # Use the generate API response format
+    content = result.get("response", "")
     
     logger.debug(f"Extracted content: '{content}'")
     return content.strip()
