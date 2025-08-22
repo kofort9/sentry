@@ -51,7 +51,7 @@ def chat(
     }
 
     logger.debug(f"Sending request to Ollama: {url}")
-    
+
     try:
         response = requests.post(url, json=payload, timeout=300)  # 5 minute timeout
         response.raise_for_status()
