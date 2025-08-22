@@ -223,8 +223,24 @@ class PatchEngine:
             )
         )
 
+        # Fix the diff format by ensuring proper newlines between headers
+        # The unified_diff function doesn't always add newlines between headers
+        fixed_lines = []
+        for i, line in enumerate(diff_lines):
+            fixed_lines.append(line)
+
+            # Add newline after --- a/file line
+            if line.startswith("--- a/"):
+                fixed_lines.append("\n")
+            # Add newline after +++ b/file line
+            elif line.startswith("+++ b/"):
+                fixed_lines.append("\n")
+            # Add newline after @@ line
+            elif line.startswith("@@"):
+                fixed_lines.append("\n")
+
         # Join lines and ensure proper diff format
-        diff_content = "".join(diff_lines)
+        diff_content = "".join(fixed_lines)
 
         # Add newline at end if missing
         if not diff_content.endswith("\n"):
