@@ -293,96 +293,109 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
 def validate_patch_line_numbers(diff_str: str, test_file_path: str) -> Tuple[bool, str]:
     """
     Validate that the patch references correct line numbers in the actual file.
-    
+
     Args:
         diff_str: The unified diff string
         test_file_path: Path to the test file
-        
+
     Returns:
         (is_valid, reason) tuple
     """
     try:
         # Read the current file content
-        with open(test_file_path, 'r') as f:
+        with open(test_file_path, "r") as f:
             current_lines = f.readlines()
-        
+
         logger.info(f"🔍 Validating patch against {test_file_path} ({len(current_lines)} lines)")
-        
+
         # Extract hunks from the diff
         hunks = []
-        diff_lines = diff_str.split('\n')
-        
+        diff_lines = diff_str.split("\n")
+
         for i, line in enumerate(diff_lines):
-            if line.startswith('@@'):
+            if line.startswith("@@"):
                 # Parse @@ -old_start,old_count +new_start,new_count @@
-                match = re.search(r'@@ -(\d+),?(\d+)? \+(\d+),?(\d+)? @@', line)
+                match = re.search(r"@@ -(\d+),?(\d+)? \+(\d+),?(\d+)? @@", line)
                 if match:
                     old_start = int(match.group(1))
                     old_count = int(match.group(2)) if match.group(2) else 1
-                    
+
                     # Extract the old lines for this hunk
                     old_lines = []
                     j = i + 1
-                    while j < len(diff_lines) and not diff_lines[j].startswith('@@'):
-                        if diff_lines[j].startswith('-'):
+                    while j < len(diff_lines) and not diff_lines[j].startswith("@@"):
+                        if diff_lines[j].startswith("-"):
                             old_lines.append(diff_lines[j][1:])  # Remove the - prefix
-                        elif diff_lines[j].startswith(' '):
+                        elif diff_lines[j].startswith(" "):
                             # Context line, also check it
                             old_lines.append(diff_lines[j][1:])  # Remove the space prefix
                         j += 1
-                    
+
                     hunks.append((old_start, old_count, old_lines))
-        
-        logger.info(f"📍 Patch references {len(hunks)} hunks: {[(start, count) for start, count, _ in hunks]}")
-        
+
+        logger.info(
+            f"📍 Patch references {len(hunks)} hunks: "
+            f"{[(start, count) for start, count, _ in hunks]}"
+        )
+
         # Check each hunk
         for old_start, old_count, expected_lines in hunks:
             # Check if the line numbers are within the file bounds
             if old_start < 1 or old_start > len(current_lines):
-                return False, f"Hunk references line {old_start} but file only has {len(current_lines)} lines"
-            
+                return (
+                    False,
+                    f"Hunk references line {old_start} but file only has "
+                    f"{len(current_lines)} lines",
+                )
+
             # Check if the expected lines match the current file content
             file_line_index = old_start - 1  # Convert to 0-based index
-            
+
             for expected_line in expected_lines:
                 if file_line_index >= len(current_lines):
                     return False, f"Hunk extends beyond file end (line {file_line_index + 1})"
-                
-                actual_line = current_lines[file_line_index].rstrip('\n')
+
+                actual_line = current_lines[file_line_index].rstrip("\n")
                 if expected_line.strip() != actual_line.strip():
                     logger.error(f"❌ Line {file_line_index + 1} mismatch:")
                     logger.error(f"   Expected: '{expected_line.strip()}'")
                     logger.error(f"   Actual:   '{actual_line.strip()}'")
-                    return False, f"Line {file_line_index + 1} content doesn't match: expected '{expected_line.strip()}', got '{actual_line.strip()}'"
-                
+                    return (
+                        False,
+                        f"Line {file_line_index + 1} content doesn\'t match: "
+                        f"expected \'{expected_line.strip()}\', got \'{actual_line.strip()}\'",
+                    )
+
                 file_line_index += 1
-        
+
         logger.info("✅ Patch line numbers and content are valid")
         return True, "Valid patch"
-        
+
     except Exception as e:
         logger.error(f"Error validating patch: {e}")
         return False, f"Validation error: {e}"
 
 
-def apply_and_test_patch_with_feedback(diff_str: str, original_context: str, plan: str, max_attempts: int = 3) -> Tuple[bool, str]:
+def apply_and_test_patch_with_feedback(
+    diff_str: str, original_context: str, plan: str, max_attempts: int = 3
+) -> Tuple[bool, str]:
     """
     Apply patch with feedback loop for validation failures.
-    
+
     Args:
         diff_str: The unified diff to apply
         original_context: Original test failure context
         plan: The test fix plan
         max_attempts: Maximum number of correction attempts (default: 3)
-        
+
     Returns:
         (success, final_patch) tuple
     """
     current_patch = diff_str
-    
+
     for attempt in range(max_attempts):
         logger.info(f"🔄 Patch attempt {attempt + 1}/{max_attempts}")
-        
+
         # Validate the diff format first
         is_valid, reason = validate_unified_diff(current_patch, TESTS_ALLOWLIST)
         if not is_valid:
@@ -391,40 +404,47 @@ def apply_and_test_patch_with_feedback(diff_str: str, original_context: str, pla
         else:
             # Extract test file path from the diff
             test_file_path = None
-            for line in current_patch.split('\n'):
-                if line.startswith('--- a/') or line.startswith('+++ b/'):
-                    if 'test_' in line:
+            for line in current_patch.split("\n"):
+                if line.startswith("--- a/") or line.startswith("+++ b/"):
+                    if "test_" in line:
                         # Extract file path
-                        if line.startswith('--- a/'):
+                        if line.startswith("--- a/"):
                             test_file_path = line[6:]  # Remove '--- a/'
-                        elif line.startswith('+++ b/'):
+                        elif line.startswith("+++ b/"):
                             test_file_path = line[6:]  # Remove '+++ b/'
                         break
-            
+
             if test_file_path:
                 # Validate patch line numbers and content
                 logger.info(f"🔍 Validating patch against {test_file_path}")
                 is_valid, reason = validate_patch_line_numbers(current_patch, test_file_path)
-                
+
                 if is_valid:
                     logger.info("✅ Patch validation passed")
-                    
+
                     # Try to apply the patch
                     if apply_unified_diff(".", current_patch):
                         logger.info("✅ Patch applied successfully")
-                        
+
                         # CRITICAL: Run pytest to verify the fix actually works
                         logger.info("🧪 Running pytest to verify the fix...")
-                        result = subprocess.run(["pytest", "sentries/", "-q"], 
-                                              capture_output=True, text=True, timeout=300)
-                        
+                        result = subprocess.run(
+                            ["pytest", "sentries/", "-q"],
+                            capture_output=True,
+                            text=True,
+                            timeout=300,
+                        )
+
                         if result.returncode == 0:
                             logger.info("🎉 Tests are now passing! Fix verified.")
                             return True, current_patch
                         else:
                             logger.error("❌ Tests still failing after patch - fix didn't work")
                             # Generate feedback for the LLM
-                            feedback = f"Patch applied but tests still fail. Test output:\n{result.stdout}\n{result.stderr}"
+                            feedback = (
+                                f"Patch applied but tests still fail. Test output:\n"
+                                f"{result.stdout}\n{result.stderr}"
+                            )
                     else:
                         feedback = "Patch failed to apply due to git apply error"
                 else:
@@ -432,11 +452,11 @@ def apply_and_test_patch_with_feedback(diff_str: str, original_context: str, pla
                     feedback = f"Patch validation failed: {reason}"
             else:
                 feedback = "Could not extract test file path from patch"
-        
+
         # If we're not on the last attempt, try to get the LLM to fix it
         if attempt < max_attempts - 1:
             logger.info("🔄 Asking LLM to correct the patch...")
-            
+
             # Create feedback context
             feedback_context = f"""
 {original_context}
@@ -454,13 +474,12 @@ Make sure to:
 PREVIOUS FAILED PATCH:
 {current_patch}
 """
-            
+
             # Get corrected patch from LLM
             corrected_patch = generate_test_patch(
-                f"CORRECTION NEEDED: {feedback}",
-                feedback_context
+                f"CORRECTION NEEDED: {feedback}", feedback_context
             )
-            
+
             if corrected_patch:
                 current_patch = corrected_patch
                 logger.info("🔄 LLM generated corrected patch, retrying...")
@@ -472,7 +491,7 @@ PREVIOUS FAILED PATCH:
             logger.error(f"❌ Max attempts ({max_attempts}) reached, giving up")
             logger.error(f"Final failure reason: {feedback}")
             break
-    
+
     return False, current_patch
 
 
@@ -625,8 +644,10 @@ def main() -> None:
 
     # Apply and test with feedback loop (max 3 attempts)
     logger.info("🔄 Starting patch application with feedback loop...")
-    success, final_patch = apply_and_test_patch_with_feedback(diff_str, context, plan, max_attempts=3)
-    
+    success, final_patch = apply_and_test_patch_with_feedback(
+        diff_str, context, plan, max_attempts=3
+    )
+
     if not success:
         exit_noop("Patch application or testing failed after 3 attempts")
 
