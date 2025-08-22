@@ -7,14 +7,14 @@ from pathlib import Path
 import pytest
 
 
-def test_banner_import():
+def test_banner_import() -> None:
     """Test that banner module can be imported"""
     from sentries import banner
 
     assert hasattr(banner, "show_sentry_banner")
 
 
-def test_runner_common_import():
+def test_runner_common_import() -> None:
     """Test that runner_common module can be imported"""
     from sentries import runner_common
 
@@ -22,7 +22,7 @@ def test_runner_common_import():
     assert hasattr(runner_common, "DOCS_ALLOWLIST")
 
 
-def test_allowlists_are_lists():
+def test_allowlists_are_lists() -> None:
     """Test that allowlists are properly configured as lists"""
     from sentries.runner_common import DOCS_ALLOWLIST, TESTS_ALLOWLIST
 
@@ -38,7 +38,7 @@ def test_allowlists_are_lists():
     ), "DOCS_ALLOWLIST should contain README.md"
 
 
-def test_package_structure():
+def test_package_structure() -> None:
     """Test that all core modules exist"""
     core_modules = [
         "banner",
@@ -58,7 +58,7 @@ def test_package_structure():
             pytest.fail(f"Failed to import sentries.{module_name}: {e}")
 
 
-def test_cli_scripts_exist():
+def test_cli_scripts_exist() -> None:
     """Test that core CLI script files exist"""
     script_dir = Path(__file__).parent
 
@@ -70,7 +70,7 @@ def test_cli_scripts_exist():
         assert script_path.stat().st_size > 0, f"CLI script {script} is empty"
 
 
-def test_version_consistency():
+def test_version_consistency() -> None:
     """Test that version is consistent across package"""
     import toml
 
@@ -86,13 +86,13 @@ def test_version_consistency():
     ), f"Version mismatch: {__version__} != {pyproject_version}"
 
 
-def test_intentional_failure():
+def test_intentional_failure() -> None:
     """Intentionally failing test to trigger TestSentry"""
     # This test should fail to trigger TestSentry in CI
     assert 1 == 2, "This test is intentionally failing to test TestSentry automation"
 
 
-def test_another_intentional_failure():
+def test_another_intentional_failure() -> None:
     """Another intentionally failing test"""
     # Multiple failures to give TestSentry more context
     result = 5 + 5

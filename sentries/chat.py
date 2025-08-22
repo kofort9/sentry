@@ -2,7 +2,7 @@
 Simple chat interface for communicating with Ollama.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import requests
 
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 
 def chat(
-    model: str, messages: List[Dict[str, str]], temperature: float = 0.1, max_tokens: int = 500
+    model: str, messages: List[Dict[str, str]], temperature: float = 0.1, max_tokens: int = 500, **kwargs: Any
 ) -> str:
     """
     Send a chat request to Ollama.
@@ -56,13 +56,16 @@ def chat(
         response.raise_for_status()
         result = response.json()
         content = result.get("response", "")
-        return content.strip()
+        if isinstance(content, str):
+            return content.strip()
+        else:
+            return str(content).strip()
     except Exception as e:
         logger.error(f"Error communicating with Ollama: {e}")
         raise
 
 
-def get_default_params(model_type: str) -> Dict[str, float]:
+def get_default_params(model_type: str) -> Dict[str, float | int]:
     """Get default parameters for different model types."""
     if model_type == "planner":
         return {"temperature": 0.2, "max_tokens": 600}

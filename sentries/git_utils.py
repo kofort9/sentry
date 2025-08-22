@@ -97,7 +97,7 @@ def create_branch(prefix: str, sha: str = None, sentry_type: str = "unknown") ->
         raise
 
 
-def tag_branch_with_sentries_metadata(branch_name: str, sentry_type: str, source_sha: str):
+def tag_branch_with_sentries_metadata(branch_name: str, sentry_type: str, source_sha: str) -> None:
     """
     Add Sentries metadata to a branch for easy identification.
 
@@ -299,7 +299,7 @@ def open_pull_request(
         return None
 
 
-def add_sentries_labels_to_pr(pr_number: int, sentry_type: str):
+def add_sentries_labels_to_pr(pr_number: int, sentry_type: str) -> None:
     """
     Add Sentries-specific labels to a PR for easy identification.
 
@@ -325,7 +325,7 @@ def add_sentries_labels_to_pr(pr_number: int, sentry_type: str):
         logger.error(f"Error adding Sentries labels to PR #{pr_number}: {e}")
 
 
-def add_sentries_metadata_to_pr(pr_number: int, sentry_type: str, source_branch: str):
+def add_sentries_metadata_to_pr(pr_number: int, sentry_type: str, source_branch: str) -> None:
     """
     Add Sentries metadata as a comment to the PR.
 

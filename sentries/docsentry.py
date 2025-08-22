@@ -174,7 +174,12 @@ Please analyze these changes and propose minimal documentation updates to keep d
         ]
 
         logger.info("Planning documentation updates with LLM...")
-        response = chat(model=MODEL_PLAN, messages=messages, **params)
+        response = chat(
+            model=MODEL_PLAN, 
+            messages=messages, 
+            temperature=params["temperature"], 
+            max_tokens=int(params["max_tokens"])
+        )
 
         logger.info("Documentation planning completed")
         return response
@@ -204,7 +209,12 @@ def generate_doc_patch(plan: str, context: str) -> Optional[str]:
         ]
 
         logger.info("Generating documentation patch with LLM...")
-        response = chat(model=MODEL_PATCH, messages=messages, **params)
+        response = chat(
+            model=MODEL_PATCH, 
+            messages=messages, 
+            temperature=params["temperature"], 
+            max_tokens=int(params["max_tokens"])
+        )
 
         if "ABORT" in response.upper():
             logger.info("LLM patcher returned ABORT")
@@ -315,7 +325,7 @@ def label_feature_pr(pr_number: int, success: bool = True) -> None:
         logger.error(f"Error labeling feature PR: {e}")
 
 
-def show_sentries_banner():
+def show_sentries_banner() -> None:
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
 

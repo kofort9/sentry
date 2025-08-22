@@ -157,7 +157,12 @@ def plan_test_fixes(context: str) -> Optional[str]:
 
         # Try primary model first
         logger.info(f"Trying primary model: {MODEL_PLAN}")
-        response = chat(model=MODEL_PLAN, messages=messages, **params)
+        response = chat(
+            model=MODEL_PLAN, 
+            messages=messages, 
+            temperature=params["temperature"], 
+            max_tokens=int(params["max_tokens"])
+        )
 
         # If primary model fails, try fallback model
         if not response or len(response.strip()) == 0:
@@ -167,7 +172,12 @@ def plan_test_fixes(context: str) -> Optional[str]:
             )
             logger.info(f"Trying fallback model: {fallback_model}")
             try:
-                response = chat(model=fallback_model, messages=messages, **params)
+                response = chat(
+                model=fallback_model, 
+                messages=messages, 
+                temperature=params["temperature"], 
+                max_tokens=int(params["max_tokens"])
+            )
             except Exception as e:
                 logger.error(f"Fallback model also failed: {e}")
                 response = ""
@@ -217,7 +227,12 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
         ]
 
         logger.info("Generating test patch with LLM...")
-        response = chat(model=MODEL_PATCH, messages=messages, **params)
+        response = chat(
+            model=MODEL_PATCH, 
+            messages=messages, 
+            temperature=params["temperature"], 
+            max_tokens=int(params["max_tokens"])
+        )
 
         # Log the full LLM patch response for debugging
         logger.info(f"LLM Patcher Response (length: {len(response)}):")
@@ -357,7 +372,7 @@ def label_feature_pr(pr_number: int, success: bool = True) -> None:
         logger.error(f"Error labeling feature PR: {e}")
 
 
-def show_sentries_banner():
+def show_sentries_banner() -> None:
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
 

@@ -15,7 +15,7 @@ def get_sentry_banner() -> str:
 ╚────────────────────────────────────────────╝"""
 
 
-def show_sentry_banner():
+def show_sentry_banner() -> None:
     """Display the Sentry ASCII art banner."""
     print(get_sentry_banner())
     print()
