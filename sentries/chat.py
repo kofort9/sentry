@@ -10,10 +10,7 @@ logger = get_logger(__name__)
 
 
 def chat(
-    model: str,
-    messages: List[Dict[str, str]],
-    temperature: float = 0.1,
-    max_tokens: int = 500
+    model: str, messages: List[Dict[str, str]], temperature: float = 0.1, max_tokens: int = 500
 ) -> str:
     """
     Send a chat request to Ollama.
@@ -47,7 +44,7 @@ def chat(
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,
-        }
+        },
     }
 
     logger.debug(f"Sending request to Ollama: {url}")

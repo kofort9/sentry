@@ -1,6 +1,7 @@
 """
 Shared utilities for Sentries runners.
 """
+
 import os
 import sys
 import logging
@@ -34,7 +35,7 @@ def setup_logging(level: str = "INFO") -> None:
     logging.basicConfig(
         level=getattr(logging, level.upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout)]
+        handlers=[logging.StreamHandler(sys.stdout)],
     )
 
 

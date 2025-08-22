@@ -8,16 +8,26 @@ import subprocess
 
 from typing import Optional
 from .runner_common import (
-    setup_logging, get_logger, validate_environment, get_short_sha,
-    exit_success, exit_noop, exit_failure, TESTS_ALLOWLIST,
-    MODEL_PLAN, MODEL_PATCH
+    setup_logging,
+    get_logger,
+    validate_environment,
+    get_short_sha,
+    exit_success,
+    exit_noop,
+    exit_failure,
+    TESTS_ALLOWLIST,
+    MODEL_PLAN,
+    MODEL_PATCH,
 )
 from .chat import chat, get_default_params
 from .prompts import PLANNER_TESTS, PATCHER_TESTS
 from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
 from .git_utils import (
-    create_branch, commit_all, open_pull_request, label_pull_request,
-    get_base_branch
+    create_branch,
+    commit_all,
+    open_pull_request,
+    label_pull_request,
+    get_base_branch,
 )
 
 logger = get_logger(__name__)
@@ -34,10 +44,10 @@ def discover_test_failures() -> Optional[str]:
     if os.path.exists("pytest-output.txt"):
         logger.info("Using pre-captured test failure output from CI")
         try:
-            with open("pytest-output.txt", 'r') as f:
+            with open("pytest-output.txt", "r") as f:
                 output = f.read()
 
-            if 'FAILED' in output or 'ERROR' in output or 'AssertionError' in output:
+            if "FAILED" in output or "ERROR" in output or "AssertionError" in output:
                 logger.info("Found test failures in pre-captured output")
                 return output
             else:
@@ -50,10 +60,10 @@ def discover_test_failures() -> Optional[str]:
     try:
         logger.info("Running pytest to discover test failures...")
         result = subprocess.run(
-            ['pytest', 'sentries/', '--tb=short', '-q'],
+            ["pytest", "sentries/", "--tb=short", "-q"],
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes timeout
+            timeout=300,  # 5 minutes timeout
         )
 
         if result.returncode == 0:
@@ -88,18 +98,19 @@ def get_test_context(failing_tests_output: str) -> str:
         Formatted context for the LLM
     """
     # Extract test file paths and line numbers from pytest output
-    lines = failing_tests_output.split('\n')
+    lines = failing_tests_output.split("\n")
     test_files = set()
 
     for line in lines:
-        if '::' in line and '.py::' in line:
+        if "::" in line and ".py::" in line:
             # Extract file path from test identifier
-            parts = line.split('::')
+            parts = line.split("::")
             if len(parts) >= 2:
                 file_path = parts[0]
                 # Include test files from tests/ directory or sentries/test_*.py
-                if file_path.startswith(
-                        'tests/') or (file_path.startswith('sentries/') and 'test_' in file_path):
+                if file_path.startswith("tests/") or (
+                    file_path.startswith("sentries/") and "test_" in file_path
+                ):
                     test_files.add(file_path)
 
     context = f"Test failures detected:\n\n{failing_tests_output}\n\n"
@@ -108,7 +119,7 @@ def get_test_context(failing_tests_output: str) -> str:
         context += "Relevant test files and content:\n\n"
         for file_path in sorted(test_files):
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path, "r") as f:
                     file_content = f.read()
                 context += f"=== {file_path} ===\n{file_content}\n\n"
             except Exception as e:
@@ -132,7 +143,7 @@ def plan_test_fixes(context: str) -> Optional[str]:
 
         messages = [
             {"role": "system", "content": PLANNER_TESTS},
-            {"role": "user", "content": context}
+            {"role": "user", "content": context},
         ]
 
         logger.info("Planning test fixes with LLM...")
@@ -147,11 +158,7 @@ def plan_test_fixes(context: str) -> Optional[str]:
 
         # Try primary model first
         logger.info(f"Trying primary model: {MODEL_PLAN}")
-        response = chat(
-            model=MODEL_PLAN,
-            messages=messages,
-            **params
-        )
+        response = chat(model=MODEL_PLAN, messages=messages, **params)
 
         # If primary model fails, try fallback model
         if not response or len(response.strip()) == 0:
@@ -161,11 +168,7 @@ def plan_test_fixes(context: str) -> Optional[str]:
             )
             logger.info(f"Trying fallback model: {fallback_model}")
             try:
-                response = chat(
-                    model=fallback_model,
-                    messages=messages,
-                    **params
-                )
+                response = chat(model=fallback_model, messages=messages, **params)
             except Exception as e:
                 logger.error(f"Fallback model also failed: {e}")
                 response = ""
@@ -211,15 +214,11 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
 
         messages = [
             {"role": "system", "content": PATCHER_TESTS},
-            {"role": "user", "content": f"Plan: {plan}\n\nContext: {context}"}
+            {"role": "user", "content": f"Plan: {plan}\n\nContext: {context}"},
         ]
 
         logger.info("Generating test patch with LLM...")
-        response = chat(
-            model=MODEL_PATCH,
-            messages=messages,
-            **params
-        )
+        response = chat(model=MODEL_PATCH, messages=messages, **params)
 
         if "ABORT" in response.upper():
             logger.info("LLM patcher returned ABORT")
@@ -257,12 +256,7 @@ def apply_and_test_patch(diff_str: str) -> bool:
 
         # Re-run tests to verify the fix
         logger.info("Re-running tests to verify the fix...")
-        result = subprocess.run(
-            ['pytest', '-q'],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
+        result = subprocess.run(["pytest", "-q"], capture_output=True, text=True, timeout=300)
 
         if result.returncode == 0:
             logger.info("Tests are now passing!")
@@ -346,6 +340,7 @@ def label_feature_pr(pr_number: int, success: bool = True) -> None:
 def show_sentries_banner():
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
+
     show_sentry_banner()
     print("🧪 TestSentry - AI-Powered Test Fixing")
     print("=" * 50)

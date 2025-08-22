@@ -8,16 +8,27 @@ import json
 import subprocess
 from typing import Dict, Optional, Tuple
 from .runner_common import (
-    setup_logging, get_logger, validate_environment, get_short_sha,
-    exit_success, exit_noop, exit_failure, DOCS_ALLOWLIST,
-    MODEL_PLAN, MODEL_PATCH, GITHUB_EVENT_PATH
+    setup_logging,
+    get_logger,
+    validate_environment,
+    get_short_sha,
+    exit_success,
+    exit_noop,
+    exit_failure,
+    DOCS_ALLOWLIST,
+    MODEL_PLAN,
+    MODEL_PATCH,
+    GITHUB_EVENT_PATH,
 )
 from .chat import chat, get_default_params
 from .prompts import PLANNER_DOCS, PATCHER_DOCS
 from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
 from .git_utils import (
-    create_branch, commit_all, open_pull_request, label_pull_request,
-    get_base_branch
+    create_branch,
+    commit_all,
+    open_pull_request,
+    label_pull_request,
+    get_base_branch,
 )
 
 logger = get_logger(__name__)
@@ -35,7 +46,7 @@ def read_github_event() -> Optional[Dict]:
         return None
 
     try:
-        with open(GITHUB_EVENT_PATH, 'r') as f:
+        with open(GITHUB_EVENT_PATH, "r") as f:
             event_data = json.load(f)
 
         logger.info(f"Read GitHub event: {event_data.get('action', 'unknown')}")
@@ -93,10 +104,10 @@ def get_diff_summary() -> Optional[str]:
 
         # Get list of changed files
         result = subprocess.run(
-            ['git', 'di', '--name-status', f'origin/{base_branch}...HEAD'],
+            ["git", "di", "--name-status", f"origin/{base_branch}...HEAD"],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
 
         if result.returncode != 0:
@@ -104,9 +115,9 @@ def get_diff_summary() -> Optional[str]:
             return None
 
         changed_files = []
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             if line.strip():
-                status, file_path = line.split('\t', 1)
+                status, file_path = line.split("\t", 1)
                 changed_files.append(f"{status} {file_path}")
 
         if not changed_files:
@@ -115,10 +126,10 @@ def get_diff_summary() -> Optional[str]:
 
         # Get actual diff content (limited to avoid context overflow)
         diff_result = subprocess.run(
-            ['git', 'di', '--stat', f'origin/{base_branch}...HEAD'],
+            ["git", "di", "--stat", f"origin/{base_branch}...HEAD"],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
 
         diff_summary = ""
@@ -159,15 +170,11 @@ Please analyze these changes and propose minimal documentation updates to keep d
 
         messages = [
             {"role": "system", "content": PLANNER_DOCS},
-            {"role": "user", "content": context}
+            {"role": "user", "content": context},
         ]
 
         logger.info("Planning documentation updates with LLM...")
-        response = chat(
-            model=MODEL_PLAN,
-            messages=messages,
-            **params
-        )
+        response = chat(model=MODEL_PLAN, messages=messages, **params)
 
         logger.info("Documentation planning completed")
         return response
@@ -193,15 +200,11 @@ def generate_doc_patch(plan: str, context: str) -> Optional[str]:
 
         messages = [
             {"role": "system", "content": PATCHER_DOCS},
-            {"role": "user", "content": f"Plan: {plan}\n\nContext: {context}"}
+            {"role": "user", "content": f"Plan: {plan}\n\nContext: {context}"},
         ]
 
         logger.info("Generating documentation patch with LLM...")
-        response = chat(
-            model=MODEL_PATCH,
-            messages=messages,
-            **params
-        )
+        response = chat(model=MODEL_PATCH, messages=messages, **params)
 
         if "ABORT" in response.upper():
             logger.info("LLM patcher returned ABORT")
@@ -315,6 +318,7 @@ def label_feature_pr(pr_number: int, success: bool = True) -> None:
 def show_sentries_banner():
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
+
     show_sentry_banner()
     print("📚 DocSentry - AI-Powered Documentation Updates")
     print("=" * 50)

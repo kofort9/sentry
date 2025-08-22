@@ -1,6 +1,7 @@
 """
 Git utilities for branch management, commits, and PR operations.
 """
+
 import json
 import re
 from datetime import datetime
@@ -19,10 +20,7 @@ def current_sha() -> str:
     """Get the current commit SHA."""
     try:
         result = subprocess.run(
-            ['git', 'rev-parse', 'HEAD'],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -40,10 +38,7 @@ def get_short_sha(sha: str = None) -> str:
 
     try:
         result = subprocess.run(
-            ['git', 'rev-parse', '--short', sha],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["git", "rev-parse", "--short", sha], capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -76,26 +71,18 @@ def create_branch(prefix: str, sha: str = None, sentry_type: str = "unknown") ->
     try:
         # Check if branch already exists
         result = subprocess.run(
-            ['git', 'show-re', '--verify', '--quiet', f'refs/heads/{branch_name}'],
+            ["git", "show-re", "--verify", "--quiet", f"refs/heads/{branch_name}"],
             capture_output=True,
-            timeout=10
+            timeout=10,
         )
 
         if result.returncode == 0:
             # Branch exists, delete it
             logger.info(f"Branch {branch_name} already exists, deleting...")
-            subprocess.run(
-                ['git', 'branch', '-D', branch_name],
-                check=True,
-                timeout=10
-            )
+            subprocess.run(["git", "branch", "-D", branch_name], check=True, timeout=10)
 
         # Create new branch
-        subprocess.run(
-            ['git', 'checkout', '-b', branch_name, sha],
-            check=True,
-            timeout=10
-        )
+        subprocess.run(["git", "checkout", "-b", branch_name, sha], check=True, timeout=10)
 
         # Tag the branch with Sentries metadata
         tag_branch_with_sentries_metadata(branch_name, sentry_type, sha)
@@ -128,18 +115,19 @@ def tag_branch_with_sentries_metadata(branch_name: str, sentry_type: str, source
             "source_commit": source_sha,
             "created_at": datetime.now().isoformat(),
             "version": "0.1.0",
-            "branch_name": branch_name
+            "branch_name": branch_name,
         }
 
         metadata_file = ".sentries-metadata.json"
-        with open(metadata_file, 'w') as f:
+        with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=2)
 
         # Add and commit the metadata
-        subprocess.run(['git', 'add', metadata_file], check=True, timeout=10)
+        subprocess.run(["git", "add", metadata_file], check=True, timeout=10)
         subprocess.run(
-            ['git', 'commit', '-m', f"Add Sentries metadata for {sentry_type}"],
-            check=True, timeout=10
+            ["git", "commit", "-m", f"Add Sentries metadata for {sentry_type}"],
+            check=True,
+            timeout=10,
         )
 
         logger.info(f"Tagged branch {branch_name} with Sentries metadata")
@@ -160,12 +148,7 @@ def is_sentries_branch(branch_name: str) -> bool:
     """
     try:
         # Check branch name pattern
-        sentries_patterns = [
-            r'^ai-test-fixes/',
-            r'^ai-doc-updates/',
-            r'^sentry-',
-            r'^ai-sentry-'
-        ]
+        sentries_patterns = [r"^ai-test-fixes/", r"^ai-doc-updates/", r"^sentry-", r"^ai-sentry-"]
 
         for pattern in sentries_patterns:
             if re.match(pattern, branch_name):
@@ -173,9 +156,9 @@ def is_sentries_branch(branch_name: str) -> bool:
 
         # Check for metadata file
         result = subprocess.run(
-            ['git', 'show', f'{branch_name}:.sentries-metadata.json'],
+            ["git", "show", f"{branch_name}:.sentries-metadata.json"],
             capture_output=True,
-            timeout=10
+            timeout=10,
         )
 
         if result.returncode == 0:
@@ -196,18 +179,15 @@ def get_sentries_branches() -> List[str]:
     """
     try:
         result = subprocess.run(
-            ['git', 'branch', '--list'],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["git", "branch", "--list"], capture_output=True, text=True, timeout=10
         )
 
         if result.returncode != 0:
             return []
 
         branches = []
-        for line in result.stdout.strip().split('\n'):
-            branch_name = line.strip().lstrip('* ').strip()
+        for line in result.stdout.strip().split("\n"):
+            branch_name = line.strip().lstrip("* ").strip()
             if branch_name and is_sentries_branch(branch_name):
                 branches.append(branch_name)
 
@@ -231,10 +211,7 @@ def commit_all(message: str) -> bool:
     try:
         # Check if there are changes to commit
         result = subprocess.run(
-            ['git', 'status', '--porcelain'],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["git", "status", "--porcelain"], capture_output=True, text=True, timeout=10
         )
 
         if not result.stdout.strip():
@@ -242,14 +219,10 @@ def commit_all(message: str) -> bool:
             return True
 
         # Add all changes
-        subprocess.run(['git', 'add', '.'], check=True, timeout=10)
+        subprocess.run(["git", "add", "."], check=True, timeout=10)
 
         # Commit
-        subprocess.run(
-            ['git', 'commit', '-m', message],
-            check=True,
-            timeout=10
-        )
+        subprocess.run(["git", "commit", "-m", message], check=True, timeout=10)
 
         logger.info(f"Committed changes: {message}")
         return True
@@ -263,11 +236,7 @@ def commit_all(message: str) -> bool:
 
 
 def open_pull_request(
-    base_branch: str,
-    head_branch: str,
-    title: str,
-    body: str,
-    sentry_type: str = "unknown"
+    base_branch: str, head_branch: str, title: str, body: str, sentry_type: str = "unknown"
 ) -> Optional[int]:
     """
     Open a pull request using GitHub REST API with Sentries tagging.
@@ -288,13 +257,12 @@ def open_pull_request(
 
     url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/pulls"
 
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
 
     # Add Sentries metadata to PR body
-    sentries_body = body + """
+    sentries_body = (
+        body
+        + """
 
 ---
 **🤖 Sentries Metadata**
@@ -303,13 +271,9 @@ def open_pull_request(
 - **Generated at**: {datetime.now().isoformat()}
 - **Version**: 0.1.0
 """
+    )
 
-    payload = {
-        "title": title,
-        "body": sentries_body,
-        "head": head_branch,
-        "base": base_branch
-    }
+    payload = {"title": title, "body": sentries_body, "head": head_branch, "base": base_branch}
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=30)
@@ -387,7 +351,7 @@ def add_sentries_metadata_to_pr(pr_number: int, sentry_type: str, source_branch:
         url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{pr_number}/comments"
         headers = {
             "Authorization": f"token {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
+            "Accept": "application/vnd.github.v3+json",
         }
 
         response = requests.post(url, json={"body": metadata_comment}, headers=headers, timeout=30)
@@ -414,7 +378,7 @@ def get_sentries_prs() -> List[Dict]:
         url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/pulls"
         headers = {
             "Authorization": f"token {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
+            "Accept": "application/vnd.github.v3+json",
         }
 
         response = requests.get(url, headers=headers, timeout=30)
@@ -426,10 +390,10 @@ def get_sentries_prs() -> List[Dict]:
 
         for pr in prs:
             # Check for Sentries labels
-            if any(label.get('name', '').startswith('sentry-') for label in pr.get('labels', [])):
+            if any(label.get("name", "").startswith("sentry-") for label in pr.get("labels", [])):
                 sentries_prs.append(pr)
             # Check for Sentries metadata in body
-            elif '🤖 Sentries Metadata' in pr.get('body', ''):
+            elif "🤖 Sentries Metadata" in pr.get("body", ""):
                 sentries_prs.append(pr)
 
         return sentries_prs
@@ -456,10 +420,7 @@ def label_pull_request(pr_number: int, labels: List[str]) -> bool:
 
     url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{pr_number}/labels"
 
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
 
     payload = {"labels": labels}
 
@@ -486,7 +447,7 @@ def get_base_branch() -> str:
             url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}"
             headers = {
                 "Authorization": f"token {GITHUB_TOKEN}",
-                "Accept": "application/vnd.github.v3+json"
+                "Accept": "application/vnd.github.v3+json",
             }
 
             response = requests.get(url, headers=headers, timeout=30)
@@ -495,24 +456,19 @@ def get_base_branch() -> str:
                 return repo_data.get("default_branch", "main")
 
         # Fallback: check local branches
-        result = subprocess.run(
-            ['git', 'branch', '-r'],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
+        result = subprocess.run(["git", "branch", "-r"], capture_output=True, text=True, timeout=10)
 
         if result.returncode == 0:
-            branches = result.stdout.strip().split('\n')
+            branches = result.stdout.strip().split("\n")
             for branch in branches:
-                if 'origin/main' in branch:
-                    return 'main'
-                elif 'origin/master' in branch:
-                    return 'master'
+                if "origin/main" in branch:
+                    return "main"
+                elif "origin/master" in branch:
+                    return "master"
 
         # Default fallback
-        return 'main'
+        return "main"
 
     except Exception as e:
         logger.warning(f"Could not determine base branch, using 'main': {e}")
-        return 'main'
+        return "main"
