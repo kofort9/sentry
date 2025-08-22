@@ -140,7 +140,8 @@ def plan_test_fixes(context: str) -> Optional[str]:
         # Compress context if it's too large to reduce processing time
         if len(context) > 2000:
             logger.info(
-                f"Context is large ({len(context)} chars), compressing to reduce processing time...")
+                f"Context is large ({len(context)} chars), "
+                f"compressing to reduce processing time...")
             context = compress_test_context(context, max_chars=2000)
 
         logger.info(f"Sending context to LLM planner (length: {len(context)}):")
@@ -159,7 +160,9 @@ def plan_test_fixes(context: str) -> Optional[str]:
         # If primary model fails, try fallback model
         if not response or len(response.strip()) == 0:
             logger.warning("Primary model returned empty response, trying fallback model...")
-            fallback_model = "deepseek-coder:6.7b-instruct-q5_K_M"  # Use the patcher model as fallback
+            fallback_model = (
+                "deepseek-coder:6.7b-instruct-q5_K_M"  # Use the patcher model as fallback
+            )
             logger.info(f"Trying fallback model: {fallback_model}")
             try:
                 response = chat(

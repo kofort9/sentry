@@ -72,7 +72,9 @@ def test_version_consistency():
     pyproject_data = toml.load(pyproject_path)
     pyproject_version = pyproject_data['project']['version']
 
-    assert __version__ == pyproject_version, f"Version mismatch: {__version__} != {pyproject_version}"
+    assert __version__ == pyproject_version, (
+        f"Version mismatch: {__version__} != {pyproject_version}"
+    )
 
 
 if __name__ == "__main__":
