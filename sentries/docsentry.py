@@ -175,10 +175,10 @@ Please analyze these changes and propose minimal documentation updates to keep d
 
         logger.info("Planning documentation updates with LLM...")
         response = chat(
-            model=MODEL_PLAN, 
-            messages=messages, 
-            temperature=params["temperature"], 
-            max_tokens=int(params["max_tokens"])
+            model=MODEL_PLAN,
+            messages=messages,
+            temperature=params["temperature"],
+            max_tokens=int(params["max_tokens"]),
         )
 
         logger.info("Documentation planning completed")
@@ -210,10 +210,10 @@ def generate_doc_patch(plan: str, context: str) -> Optional[str]:
 
         logger.info("Generating documentation patch with LLM...")
         response = chat(
-            model=MODEL_PATCH, 
-            messages=messages, 
-            temperature=params["temperature"], 
-            max_tokens=int(params["max_tokens"])
+            model=MODEL_PATCH,
+            messages=messages,
+            temperature=params["temperature"],
+            max_tokens=int(params["max_tokens"]),
         )
 
         if "ABORT" in response.upper():

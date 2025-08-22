@@ -158,10 +158,10 @@ def plan_test_fixes(context: str) -> Optional[str]:
         # Try primary model first
         logger.info(f"Trying primary model: {MODEL_PLAN}")
         response = chat(
-            model=MODEL_PLAN, 
-            messages=messages, 
-            temperature=params["temperature"], 
-            max_tokens=int(params["max_tokens"])
+            model=MODEL_PLAN,
+            messages=messages,
+            temperature=params["temperature"],
+            max_tokens=int(params["max_tokens"]),
         )
 
         # If primary model fails, try fallback model
@@ -173,11 +173,11 @@ def plan_test_fixes(context: str) -> Optional[str]:
             logger.info(f"Trying fallback model: {fallback_model}")
             try:
                 response = chat(
-                model=fallback_model, 
-                messages=messages, 
-                temperature=params["temperature"], 
-                max_tokens=int(params["max_tokens"])
-            )
+                    model=fallback_model,
+                    messages=messages,
+                    temperature=params["temperature"],
+                    max_tokens=int(params["max_tokens"]),
+                )
             except Exception as e:
                 logger.error(f"Fallback model also failed: {e}")
                 response = ""
@@ -228,10 +228,10 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
 
         logger.info("Generating test patch with LLM...")
         response = chat(
-            model=MODEL_PATCH, 
-            messages=messages, 
-            temperature=params["temperature"], 
-            max_tokens=int(params["max_tokens"])
+            model=MODEL_PATCH,
+            messages=messages,
+            temperature=params["temperature"],
+            max_tokens=int(params["max_tokens"]),
         )
 
         # Log the full LLM patch response for debugging

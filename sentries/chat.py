@@ -12,7 +12,11 @@ logger = get_logger(__name__)
 
 
 def chat(
-    model: str, messages: List[Dict[str, str]], temperature: float = 0.1, max_tokens: int = 500, **kwargs: Any
+    model: str,
+    messages: List[Dict[str, str]],
+    temperature: float = 0.1,
+    max_tokens: int = 500,
+    **kwargs: Any,
 ) -> str:
     """
     Send a chat request to Ollama.
