@@ -123,7 +123,7 @@ def apply_unified_diff(repo_path: str, diff_str: str) -> bool:
         try:
             # Apply the diff
             result = subprocess.run(
-                ['git', 'apply', '-p0', temp_diff_path],
+                ['git', 'apply', '-p1', temp_diff_path],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
