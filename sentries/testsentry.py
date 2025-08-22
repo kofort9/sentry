@@ -3,8 +3,9 @@
 TestSentry: Keeps tests/** green by proposing test-only patches.
 """
 import os
+import re
 import subprocess
-from typing import Optional
+from typing import Optional, Tuple
 
 from .chat import chat, get_default_params
 from .diff_utils import apply_unified_diff, extract_diff_summary, validate_unified_diff
@@ -188,6 +189,18 @@ def plan_test_fixes(context: str) -> Optional[str]:
         logger.info(response)
         logger.info("=" * 50)
 
+        # Log the LLM's reasoning and decision-making
+        logger.info("🤖 LLM Planner Reasoning:")
+        logger.info("-" * 30)
+        if "ABORT" in response.upper():
+            logger.info("❌ LLM decided to ABORT - no fixes needed")
+        elif "NO-OP" in response.upper():
+            logger.info("⏭️ LLM decided NO-OP - no action required")
+        else:
+            logger.info("✅ LLM decided to proceed with test fixes")
+            logger.info(f"📝 Planning response: {response[:200]}...")
+        logger.info("-" * 30)
+
         # Handle empty or invalid responses
         if not response or len(response.strip()) == 0:
             logger.error("LLM planner returned empty response - this indicates a model issue")
@@ -240,6 +253,16 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
         logger.info(response)
         logger.info("=" * 50)
 
+        # Log the LLM's reasoning and decision-making
+        logger.info("🤖 LLM Patcher Reasoning:")
+        logger.info("-" * 30)
+        if "ABORT" in response.upper():
+            logger.info("❌ LLM decided to ABORT - no patch generated")
+        else:
+            logger.info("✅ LLM decided to generate a patch")
+            logger.info(f"📝 Patch content preview: {response[:200]}...")
+        logger.info("-" * 30)
+
         if "ABORT" in response.upper():
             logger.info("LLM patcher returned ABORT")
             return None
@@ -265,6 +288,192 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"Error during patch generation: {e}")
         return None
+
+
+def validate_patch_line_numbers(diff_str: str, test_file_path: str) -> Tuple[bool, str]:
+    """
+    Validate that the patch references correct line numbers in the actual file.
+    
+    Args:
+        diff_str: The unified diff string
+        test_file_path: Path to the test file
+        
+    Returns:
+        (is_valid, reason) tuple
+    """
+    try:
+        # Read the current file content
+        with open(test_file_path, 'r') as f:
+            current_lines = f.readlines()
+        
+        logger.info(f"🔍 Validating patch against {test_file_path} ({len(current_lines)} lines)")
+        
+        # Extract hunks from the diff
+        hunks = []
+        diff_lines = diff_str.split('\n')
+        
+        for i, line in enumerate(diff_lines):
+            if line.startswith('@@'):
+                # Parse @@ -old_start,old_count +new_start,new_count @@
+                match = re.search(r'@@ -(\d+),?(\d+)? \+(\d+),?(\d+)? @@', line)
+                if match:
+                    old_start = int(match.group(1))
+                    old_count = int(match.group(2)) if match.group(2) else 1
+                    
+                    # Extract the old lines for this hunk
+                    old_lines = []
+                    j = i + 1
+                    while j < len(diff_lines) and not diff_lines[j].startswith('@@'):
+                        if diff_lines[j].startswith('-'):
+                            old_lines.append(diff_lines[j][1:])  # Remove the - prefix
+                        elif diff_lines[j].startswith(' '):
+                            # Context line, also check it
+                            old_lines.append(diff_lines[j][1:])  # Remove the space prefix
+                        j += 1
+                    
+                    hunks.append((old_start, old_count, old_lines))
+        
+        logger.info(f"📍 Patch references {len(hunks)} hunks: {[(start, count) for start, count, _ in hunks]}")
+        
+        # Check each hunk
+        for old_start, old_count, expected_lines in hunks:
+            # Check if the line numbers are within the file bounds
+            if old_start < 1 or old_start > len(current_lines):
+                return False, f"Hunk references line {old_start} but file only has {len(current_lines)} lines"
+            
+            # Check if the expected lines match the current file content
+            file_line_index = old_start - 1  # Convert to 0-based index
+            
+            for expected_line in expected_lines:
+                if file_line_index >= len(current_lines):
+                    return False, f"Hunk extends beyond file end (line {file_line_index + 1})"
+                
+                actual_line = current_lines[file_line_index].rstrip('\n')
+                if expected_line.strip() != actual_line.strip():
+                    logger.error(f"❌ Line {file_line_index + 1} mismatch:")
+                    logger.error(f"   Expected: '{expected_line.strip()}'")
+                    logger.error(f"   Actual:   '{actual_line.strip()}'")
+                    return False, f"Line {file_line_index + 1} content doesn't match: expected '{expected_line.strip()}', got '{actual_line.strip()}'"
+                
+                file_line_index += 1
+        
+        logger.info("✅ Patch line numbers and content are valid")
+        return True, "Valid patch"
+        
+    except Exception as e:
+        logger.error(f"Error validating patch: {e}")
+        return False, f"Validation error: {e}"
+
+
+def apply_and_test_patch_with_feedback(diff_str: str, original_context: str, plan: str, max_attempts: int = 3) -> Tuple[bool, str]:
+    """
+    Apply patch with feedback loop for validation failures.
+    
+    Args:
+        diff_str: The unified diff to apply
+        original_context: Original test failure context
+        plan: The test fix plan
+        max_attempts: Maximum number of correction attempts (default: 3)
+        
+    Returns:
+        (success, final_patch) tuple
+    """
+    current_patch = diff_str
+    
+    for attempt in range(max_attempts):
+        logger.info(f"🔄 Patch attempt {attempt + 1}/{max_attempts}")
+        
+        # Validate the diff format first
+        is_valid, reason = validate_unified_diff(current_patch, TESTS_ALLOWLIST)
+        if not is_valid:
+            feedback = f"Diff format validation failed: {reason}"
+            logger.warning(f"⚠️ {feedback}")
+        else:
+            # Extract test file path from the diff
+            test_file_path = None
+            for line in current_patch.split('\n'):
+                if line.startswith('--- a/') or line.startswith('+++ b/'):
+                    if 'test_' in line:
+                        # Extract file path
+                        if line.startswith('--- a/'):
+                            test_file_path = line[6:]  # Remove '--- a/'
+                        elif line.startswith('+++ b/'):
+                            test_file_path = line[6:]  # Remove '+++ b/'
+                        break
+            
+            if test_file_path:
+                # Validate patch line numbers and content
+                logger.info(f"🔍 Validating patch against {test_file_path}")
+                is_valid, reason = validate_patch_line_numbers(current_patch, test_file_path)
+                
+                if is_valid:
+                    logger.info("✅ Patch validation passed")
+                    
+                    # Try to apply the patch
+                    if apply_unified_diff(".", current_patch):
+                        logger.info("✅ Patch applied successfully")
+                        
+                        # CRITICAL: Run pytest to verify the fix actually works
+                        logger.info("🧪 Running pytest to verify the fix...")
+                        result = subprocess.run(["pytest", "sentries/", "-q"], 
+                                              capture_output=True, text=True, timeout=300)
+                        
+                        if result.returncode == 0:
+                            logger.info("🎉 Tests are now passing! Fix verified.")
+                            return True, current_patch
+                        else:
+                            logger.error("❌ Tests still failing after patch - fix didn't work")
+                            # Generate feedback for the LLM
+                            feedback = f"Patch applied but tests still fail. Test output:\n{result.stdout}\n{result.stderr}"
+                    else:
+                        feedback = "Patch failed to apply due to git apply error"
+                else:
+                    logger.warning(f"⚠️ Patch validation failed: {reason}")
+                    feedback = f"Patch validation failed: {reason}"
+            else:
+                feedback = "Could not extract test file path from patch"
+        
+        # If we're not on the last attempt, try to get the LLM to fix it
+        if attempt < max_attempts - 1:
+            logger.info("🔄 Asking LLM to correct the patch...")
+            
+            # Create feedback context
+            feedback_context = f"""
+{original_context}
+
+PATCH VALIDATION FEEDBACK (Attempt {attempt + 1}):
+Your previous patch failed: {feedback}
+
+Please generate a corrected patch that addresses these validation issues.
+Make sure to:
+1. Only reference line numbers that actually exist in the file
+2. Match the exact content of the lines you're trying to change
+3. Generate a valid unified diff format with a/ and b/ prefixes
+4. Focus on fixing the actual failing tests shown in the context
+
+PREVIOUS FAILED PATCH:
+{current_patch}
+"""
+            
+            # Get corrected patch from LLM
+            corrected_patch = generate_test_patch(
+                f"CORRECTION NEEDED: {feedback}",
+                feedback_context
+            )
+            
+            if corrected_patch:
+                current_patch = corrected_patch
+                logger.info("🔄 LLM generated corrected patch, retrying...")
+                continue
+            else:
+                logger.error("❌ LLM failed to generate corrected patch")
+                break
+        else:
+            logger.error(f"❌ Max attempts ({max_attempts}) reached, giving up")
+            logger.error(f"Final failure reason: {feedback}")
+            break
+    
+    return False, current_patch
 
 
 def apply_and_test_patch(diff_str: str) -> bool:
@@ -330,7 +539,7 @@ def create_test_fix_pr(plan: str, diff_summary: str) -> Optional[int]:
 
         # Create PR
         title = f"TestSentry: fix tests for {short_sha}"
-        body = """## Test Fixes
+        body = f"""## Test Fixes
 
 **Plan:**
 {plan}
@@ -409,17 +618,20 @@ def main() -> None:
     if not plan:
         exit_noop("Non-test code changes required to fix tests")
 
-    # Generate test patch
+    # Generate test patch with feedback loop
     diff_str = generate_test_patch(plan, context)
     if not diff_str:
         exit_noop("Could not generate test patch")
 
-    # Apply and test the patch
-    if not apply_and_test_patch(diff_str):
-        exit_noop("Patch application or testing failed")
+    # Apply and test with feedback loop (max 3 attempts)
+    logger.info("🔄 Starting patch application with feedback loop...")
+    success, final_patch = apply_and_test_patch_with_feedback(diff_str, context, plan, max_attempts=3)
+    
+    if not success:
+        exit_noop("Patch application or testing failed after 3 attempts")
 
-    # Create PR
-    diff_summary = extract_diff_summary(diff_str)
+    # Create PR only if we have a working fix
+    diff_summary = extract_diff_summary(final_patch)
     pr_number = create_test_fix_pr(plan, diff_summary)
 
     if pr_number:
