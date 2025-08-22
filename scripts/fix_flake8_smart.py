@@ -5,8 +5,6 @@ Analyzes actual usage before making changes.
 """
 import os
 import re
-from datetime import datetime
-
 import ast
 
 
@@ -34,7 +32,7 @@ def analyze_file_usage(file_path):
                     used_names.add(node.value.id)
 
         return used_names
-    except:
+    except Exception:
         # If parsing fails, return empty set to be safe
         return set()
 
@@ -44,7 +42,6 @@ def fix_unused_imports_smart(file_path):
     with open(file_path, 'r') as f:
         content = f.read()
 
-    original_content = content
     used_names = analyze_file_usage(file_path)
 
     # Common imports to check
@@ -102,7 +99,6 @@ def fix_missing_blank_lines_smart(file_path):
     with open(file_path, 'r') as f:
         lines = f.readlines()
 
-    original_lines = lines.copy()
     modified = False
 
     i = 0

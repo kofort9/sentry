@@ -275,7 +275,8 @@ This is a new feature that was added recently.
                 if result.returncode == 0:
                     print(f"✅ {cmd} command available")
                 else:
-                    # Some commands might fail due to missing environment, but we can still verify they exist
+                    # Some commands might fail due to missing environment, but we can still
+                    # verify they exist
                     if "GITHUB_TOKEN environment variable is required" in result.stderr:
                         print(f"✅ {cmd} command available (requires proper environment)")
                     else:

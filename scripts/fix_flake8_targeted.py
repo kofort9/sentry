@@ -58,13 +58,11 @@ def fix_missing_blank_lines(file_path):
     with open(file_path, 'r') as f:
         lines = f.readlines()
 
-    original_lines = lines.copy()
     modified = False
 
     i = 0
     while i < len(lines) - 1:
         line = lines[i].strip()
-        next_line = lines[i + 1].strip()
 
         # Check if we need a blank line after function/class definition
         if (line.startswith('def ') or line.startswith('class ')) and line.endswith(':'):
@@ -105,7 +103,7 @@ def fix_f_string_issues(file_path):
     original_content = content
 
     # Find f-strings without placeholders and convert them to regular strings
-    # Pattern: "..." or '...' without { or } inside
+    # Pattern: "..." or 'name 'original_content' is not defined" inside
     pattern = r'f(["\'])((?:(?!\1|{).)*)\1'
 
     def replace_f_string(match):
