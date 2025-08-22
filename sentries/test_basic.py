@@ -2,8 +2,9 @@
 Basic tests for sentries package to verify testing infrastructure
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 def test_banner_import():
@@ -23,7 +24,7 @@ def test_runner_common_import():
 
 def test_allowlists_are_lists():
     """Test that allowlists are properly configured as lists"""
-    from sentries.runner_common import TESTS_ALLOWLIST, DOCS_ALLOWLIST
+    from sentries.runner_common import DOCS_ALLOWLIST, TESTS_ALLOWLIST
 
     assert isinstance(TESTS_ALLOWLIST, list), "TESTS_ALLOWLIST should be a list"
     assert isinstance(DOCS_ALLOWLIST, list), "DOCS_ALLOWLIST should be a list"
@@ -71,8 +72,9 @@ def test_cli_scripts_exist():
 
 def test_version_consistency():
     """Test that version is consistent across package"""
-    from sentries import __version__
     import toml
+
+    from sentries import __version__
 
     # Read version from pyproject.toml
     pyproject_path = Path(__file__).parent.parent / "pyproject.toml"

@@ -3,31 +3,30 @@
 TestSentry: Keeps tests/** green by proposing test-only patches.
 """
 import os
-
 import subprocess
-
 from typing import Optional
-from .runner_common import (
-    setup_logging,
-    get_logger,
-    validate_environment,
-    get_short_sha,
-    exit_success,
-    exit_noop,
-    exit_failure,
-    TESTS_ALLOWLIST,
-    MODEL_PLAN,
-    MODEL_PATCH,
-)
+
 from .chat import chat, get_default_params
-from .prompts import PLANNER_TESTS, PATCHER_TESTS
-from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
+from .diff_utils import apply_unified_diff, extract_diff_summary, validate_unified_diff
 from .git_utils import (
-    create_branch,
     commit_all,
-    open_pull_request,
-    label_pull_request,
+    create_branch,
     get_base_branch,
+    label_pull_request,
+    open_pull_request,
+)
+from .prompts import PATCHER_TESTS, PLANNER_TESTS
+from .runner_common import (
+    MODEL_PATCH,
+    MODEL_PLAN,
+    TESTS_ALLOWLIST,
+    exit_failure,
+    exit_noop,
+    exit_success,
+    get_logger,
+    get_short_sha,
+    setup_logging,
+    validate_environment,
 )
 
 logger = get_logger(__name__)
@@ -219,6 +218,12 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
 
         logger.info("Generating test patch with LLM...")
         response = chat(model=MODEL_PATCH, messages=messages, **params)
+
+        # Log the full LLM patch response for debugging
+        logger.info(f"LLM Patcher Response (length: {len(response)}):")
+        logger.info("=" * 50)
+        logger.info(response)
+        logger.info("=" * 50)
 
         if "ABORT" in response.upper():
             logger.info("LLM patcher returned ABORT")

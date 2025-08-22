@@ -4,14 +4,13 @@ Git utilities for branch management, commits, and PR operations.
 
 import json
 import re
+import subprocess
 from datetime import datetime
-
+from typing import Dict, List, Optional
 
 import requests
-import subprocess
 
-from typing import Optional, List, Dict
-from .runner_common import GITHUB_TOKEN, GITHUB_REPOSITORY, get_logger
+from .runner_common import GITHUB_REPOSITORY, GITHUB_TOKEN, get_logger
 
 logger = get_logger(__name__)
 

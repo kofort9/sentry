@@ -2,11 +2,10 @@
 Shared utilities for Sentries runners.
 """
 
+import logging
 import os
 import sys
-import logging
 from typing import Optional
-
 
 # Constants
 TESTS_ALLOWLIST = ["tests/", "sentries/test_*.py"]

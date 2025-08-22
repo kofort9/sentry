@@ -2,13 +2,12 @@
 Diff utilities for validating and applying unified diffs.
 """
 
+import fnmatch
 import os
 import re
-import fnmatch
-
-
 import subprocess
 from typing import List, Tuple
+
 from .runner_common import get_logger
 
 logger = get_logger(__name__)

@@ -2,33 +2,33 @@
 """
 DocSentry: Keeps docs in sync by proposing docs-only patches.
 """
-import os
 import json
-
+import os
 import subprocess
 from typing import Dict, Optional, Tuple
-from .runner_common import (
-    setup_logging,
-    get_logger,
-    validate_environment,
-    get_short_sha,
-    exit_success,
-    exit_noop,
-    exit_failure,
-    DOCS_ALLOWLIST,
-    MODEL_PLAN,
-    MODEL_PATCH,
-    GITHUB_EVENT_PATH,
-)
+
 from .chat import chat, get_default_params
-from .prompts import PLANNER_DOCS, PATCHER_DOCS
-from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
+from .diff_utils import apply_unified_diff, extract_diff_summary, validate_unified_diff
 from .git_utils import (
-    create_branch,
     commit_all,
-    open_pull_request,
-    label_pull_request,
+    create_branch,
     get_base_branch,
+    label_pull_request,
+    open_pull_request,
+)
+from .prompts import PATCHER_DOCS, PLANNER_DOCS
+from .runner_common import (
+    DOCS_ALLOWLIST,
+    GITHUB_EVENT_PATH,
+    MODEL_PATCH,
+    MODEL_PLAN,
+    exit_failure,
+    exit_noop,
+    exit_success,
+    get_logger,
+    get_short_sha,
+    setup_logging,
+    validate_environment,
 )
 
 logger = get_logger(__name__)

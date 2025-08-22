@@ -2,8 +2,10 @@
 Simple chat interface for communicating with Ollama.
 """
 
+from typing import Dict, List
+
 import requests
-from typing import List, Dict
+
 from .runner_common import LLM_BASE, get_logger
 
 logger = get_logger(__name__)
