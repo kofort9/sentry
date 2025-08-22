@@ -103,7 +103,8 @@ def _chat_ollama_standard(
     timeout_seconds = min(estimated_timeout, 300)
 
     logger.info(
-        f"Smart timeout calculation: {len(prompt)} chars → {timeout_seconds:.1f}s (estimated: {estimated_timeout:.1f}s)")
+        f"Smart timeout calculation: {len(prompt)} chars → "
+        f"{timeout_seconds:.1f}s (estimated: {estimated_timeout:.1f}s)")
 
     try:
         response = requests.post(url, json=payload, timeout=timeout_seconds)
@@ -175,7 +176,8 @@ def _chat_ollama_streaming(
                         if current_time - last_progress >= 5:
                             elapsed = current_time - start_time
                             logger.info(
-                                f"Streaming progress: {len(content)} chars received in {elapsed:.1f}s")
+                                f"Streaming progress: {len(content)} chars received "
+                                f"in {elapsed:.1f}s")
                             last_progress = current_time
 
                         # Check if done
@@ -260,7 +262,8 @@ def compress_test_context(context: str, max_chars: int = 2000) -> str:
 
     # Add compression note
     compressed_lines.append(
-        f"\n[Context compressed from {len(context)} to {sum(len(l) for l in compressed_lines)} chars]")
+        f"\n[Context compressed from {len(context)} to "
+        f"{sum(len(l) for l in compressed_lines)} chars]")
 
     compressed = '\n'.join(compressed_lines)
     logger.info(f"Context compressed: {len(context)} → {len(compressed)} chars")

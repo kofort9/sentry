@@ -6,7 +6,7 @@ import os
 import json
 
 import subprocess
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from .runner_common import (
     setup_logging, get_logger, validate_environment, get_short_sha,
     exit_success, exit_noop, exit_failure, DOCS_ALLOWLIST,

@@ -6,18 +6,14 @@ Cleans up all Sentries-created artifacts including branches, PRs, and metadata.
 """
 import os
 import sys
-import json
-
-
 import argparse
 import subprocess
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 
 from .git_utils import (
     get_sentries_branches,
-    get_sentries_prs,
-    is_sentries_branch
+    get_sentries_prs
 )
 from .runner_common import setup_logging, get_logger
 

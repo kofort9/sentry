@@ -7,8 +7,8 @@ import fnmatch
 
 
 import subprocess
-from typing import List, Tuple, Optional
-from .runner_common import get_logger, TESTS_ALLOWLIST, DOCS_ALLOWLIST
+from typing import List, Tuple
+from .runner_common import get_logger
 
 logger = get_logger(__name__)
 

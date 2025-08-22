@@ -11,13 +11,13 @@ CodeSentry scans repositories to identify:
 import sys
 
 from pathlib import Path
-from typing import List, Dict, Set, Optional, Tuple
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from git import Repo, InvalidGitRepositoryError
 import ast
 
 from .banner import show_sentry_banner
-from .runner_common import get_logger, TESTS_ALLOWLIST, DOCS_ALLOWLIST
+from .runner_common import get_logger, TESTS_ALLOWLIST
 
 logger = get_logger(__name__)
 
@@ -158,7 +158,9 @@ class CodeAnalyzer:
                                 line_start=func['line_start'],
                                 line_end=func['line_end'],
                                 candidate_type='test',
-                                description=f"Function '{func['name']}' needs more comprehensive tests",
+                                description=(
+                                    f"Function '{func['name']}' needs more comprehensive tests"
+                                ),
                                 complexity_score=func['complexity'],
                                 priority=self._calculate_priority(func['complexity'])
                             ))

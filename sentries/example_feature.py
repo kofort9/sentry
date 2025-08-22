@@ -8,7 +8,7 @@ This module contains functions that:
 """
 import json
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 def process_user_data(user_input: str) -> Dict[str, any]:
@@ -148,7 +148,10 @@ def undocumented_function(x: int, y: int) -> int:
 # This function has high complexity and will need comprehensive testing
 
 
-def complex_business_logic(user_data: Dict[str, any], business_rules: List[Dict[str, any]]) -> Dict[str, any]:
+def complex_business_logic(
+    user_data: Dict[str, any],
+    business_rules: List[Dict[str, any]]
+) -> Dict[str, any]:
     """Apply business rules to user data."""
     if not user_data or not business_rules:
         return {"error": "Missing data or rules"}
