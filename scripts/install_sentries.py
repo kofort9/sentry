@@ -128,8 +128,7 @@ def setup_github_actions():
     # Copy workflow files if they don't exist
     workflow_files = {
         "test-sentry.yml": "https://raw.githubusercontent.com/kofort9/sentries/main/.github/workflows/test-sentry.yml",
-        "doc-sentry.yml": "https://raw.githubusercontent.com/kofort9/sentries/main/.github/workflows/doc-sentry.yml"
-    }
+        "doc-sentry.yml": "https://raw.githubusercontent.com/kofort9/sentries/main/.github/workflows/doc-sentry.yml"}
 
     for filename, url in workflow_files.items():
         workflow_path = workflows_dir / filename
