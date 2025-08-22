@@ -57,13 +57,13 @@ def test_version_consistency() -> None:
 def test_intentional_failure() -> None:
     """This test intentionally fails to trigger TestSentry."""
     # This should trigger TestSentry to fix it
-    assert 1 == 1, "This assertion should fail to trigger TestSentry"
+    assert 1 == 2, "This assertion should fail to trigger TestSentry"
 
 
 def test_another_intentional_failure() -> None:
     """Another intentionally failing test to trigger TestSentry."""
     # This should also trigger TestSentry
-    assert True, "This should always fail to trigger TestSentry"
+    assert False, "This should always fail to trigger TestSentry"
 
 
 def test_patch_engine_import() -> None:
