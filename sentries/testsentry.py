@@ -362,8 +362,8 @@ def validate_patch_line_numbers(diff_str: str, test_file_path: str) -> Tuple[boo
                     logger.error(f"   Actual:   '{actual_line.strip()}'")
                     return (
                         False,
-                        f"Line {file_line_index + 1} content doesn\'t match: "
-                        f"expected \'{expected_line.strip()}\', got \'{actual_line.strip()}\'",
+                        f"Line {file_line_index + 1} content doesn't match: "
+                        f"expected '{expected_line.strip()}', got '{actual_line.strip()}'",
                     )
 
                 file_line_index += 1
