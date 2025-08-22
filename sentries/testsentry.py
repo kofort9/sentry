@@ -229,8 +229,23 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
             logger.info("LLM patcher returned ABORT")
             return None
 
+        # Clean up the response - remove code fences if present
+        cleaned_response = response.strip()
+        if cleaned_response.startswith("```diff"):
+            cleaned_response = cleaned_response[7:]  # Remove ```diff
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]  # Remove ```
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]  # Remove ending ```
+        cleaned_response = cleaned_response.strip()
+
         logger.info("Patch generation completed")
-        return response
+        logger.info(f"Cleaned patch (length: {len(cleaned_response)}):")
+        logger.info("=" * 50)
+        logger.info(cleaned_response)
+        logger.info("=" * 50)
+        
+        return cleaned_response
 
     except Exception as e:
         logger.error(f"Error during patch generation: {e}")
