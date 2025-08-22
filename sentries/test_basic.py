@@ -76,5 +76,18 @@ def test_version_consistency():
     )
 
 
+def test_intentional_failure():
+    """Intentionally failing test to trigger TestSentry"""
+    # This test should fail to trigger TestSentry in CI
+    assert 1 == 2, "This test is intentionally failing to test TestSentry automation"
+
+
+def test_another_intentional_failure():
+    """Another intentionally failing test"""
+    # Multiple failures to give TestSentry more context
+    result = 5 + 5
+    assert result == 11, f"Expected 11 but got {result} - this should trigger TestSentry"
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
