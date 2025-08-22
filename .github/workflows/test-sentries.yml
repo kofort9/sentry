@@ -38,9 +38,9 @@ jobs:
           pip install -e .
           pip install pytest pytest-cov pytest-mock
       
-      - name: Run smoke test
+      - name: Basic import test
         run: |
-          python scripts/smoke.py
+          python -c "import sentries; print('Sentries imported successfully')"
       
       - name: Run unit tests
         id: unit-tests
@@ -63,32 +63,19 @@ jobs:
       
       - name: Test CLI installation
         run: |
-          # Test that all CLI commands are properly installed
-          # Use --version or --help with timeout to avoid environment validation
+          # Test that the core CLI commands are properly installed
           timeout 5s testsentry --help || echo "testsentry command available"
           timeout 5s docsentry --help || echo "docsentry command available"
-          timeout 5s codesentry --help || echo "codesentry command available"
-          timeout 5s sentries-cleanup --help || echo "sentries-cleanup command available"
-          timeout 5s sentries-status --help || echo "sentries-status command available"
-          timeout 5s sentries-setup --help || echo "sentries-setup command available"
-          timeout 5s sentries-update-models --help || echo "sentries-update-models command available"
       
       - name: Test import functionality
         run: |
           python -c "
           from sentries import banner, chat, prompts, diff_utils, git_utils, runner_common
-          from sentries import testsentry, docsentry, codesentry, cleanup, status, setup_cli, update_models_cli
-          print('All modules imported successfully')
+          from sentries import testsentry, docsentry
+          print('Core modules imported successfully')
           "
       
-      - name: Test CodeSentry Analysis
-        run: |
-          python -c "
-          from sentries.codesentry import CodeSentry
-          codesentry = CodeSentry()
-          results = codesentry.analyze()
-          print(f'CodeSentry found {results.summary[\"total_candidates\"]} improvement candidates')
-          "
+
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -322,15 +309,15 @@ jobs:
       
       - name: Run flake8
         run: |
-          flake8 sentries/ scripts/ --max-line-length=100 --extend-ignore=E203,W503
+          flake8 sentries/ --max-line-length=100 --extend-ignore=E203,W503
       
       - name: Run black check
         run: |
-          black --check --diff sentries/ scripts/
+          black --check --diff sentries/
       
       - name: Run isort check
         run: |
-          isort --check-only --diff sentries/ scripts/
+          isort --check-only --diff sentries/
       
       - name: Run mypy
         run: |

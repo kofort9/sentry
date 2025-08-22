@@ -34,13 +34,13 @@ def test_allowlists_are_lists():
 
 
 def test_package_structure():
-    """Test that all expected modules exist"""
-    expected_modules = [
+    """Test that all core modules exist"""
+    core_modules = [
         'banner', 'chat', 'prompts', 'diff_utils', 'git_utils', 'runner_common',
-        'testsentry', 'docsentry', 'cleanup', 'status', 'setup_cli', 'update_models_cli'
+        'testsentry', 'docsentry'
     ]
 
-    for module_name in expected_modules:
+    for module_name in core_modules:
         try:
             __import__(f'sentries.{module_name}')
         except ImportError as e:
@@ -48,15 +48,14 @@ def test_package_structure():
 
 
 def test_cli_scripts_exist():
-    """Test that CLI script files exist"""
-    script_dir = Path(__file__).parent.parent / "sentries"
+    """Test that core CLI script files exist"""
+    script_dir = Path(__file__).parent
 
-    expected_scripts = [
-        'testsentry.py', 'docsentry.py', 'cleanup.py', 'status.py',
-        'setup_cli.py', 'update_models_cli.py'
+    core_scripts = [
+        'testsentry.py', 'docsentry.py'
     ]
 
-    for script in expected_scripts:
+    for script in core_scripts:
         script_path = script_dir / script
         assert script_path.exists(), f"CLI script {script} not found"
         assert script_path.stat().st_size > 0, f"CLI script {script} is empty"

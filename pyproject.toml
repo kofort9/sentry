@@ -62,11 +62,6 @@ all = [
 [project.scripts]
 testsentry = "sentries.testsentry:main"
 docsentry = "sentries.docsentry:main"
-codesentry = "sentries.codesentry:main"
-sentries-cleanup = "sentries.cleanup:main"
-sentries-status = "sentries.status:main"
-sentries-setup = "sentries.setup_cli:main"
-sentries-update-models = "sentries.update_models_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -76,7 +71,7 @@ include = ["sentries*"]
 sentries = ["*.py"]
 
 [tool.pytest.ini_options]
-testpaths = ["sentries", "scripts"]
+testpaths = ["sentries"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

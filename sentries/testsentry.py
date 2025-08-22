@@ -12,7 +12,7 @@ from .runner_common import (
     exit_success, exit_noop, exit_failure, TESTS_ALLOWLIST,
     MODEL_PLAN, MODEL_PATCH
 )
-from .chat import chat, get_default_params, compress_test_context
+from .chat import chat, get_default_params
 from .prompts import PLANNER_TESTS, PATCHER_TESTS
 from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
 from .git_utils import (
@@ -137,12 +137,8 @@ def plan_test_fixes(context: str) -> Optional[str]:
 
         logger.info("Planning test fixes with LLM...")
 
-        # Compress context if it's too large to reduce processing time
-        if len(context) > 2000:
-            logger.info(
-                f"Context is large ({len(context)} chars), "
-                f"compressing to reduce processing time...")
-            context = compress_test_context(context, max_chars=2000)
+        # Log context size (no compression needed - simple is better)
+        logger.info(f"Context size: {len(context)} chars")
 
         logger.info(f"Sending context to LLM planner (length: {len(context)}):")
         logger.info("=" * 50)
