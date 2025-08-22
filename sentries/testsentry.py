@@ -244,7 +244,7 @@ def generate_test_patch(plan: str, context: str) -> Optional[str]:
         logger.info("=" * 50)
         logger.info(cleaned_response)
         logger.info("=" * 50)
-        
+
         return cleaned_response
 
     except Exception as e:
