@@ -21,6 +21,8 @@ from .diff_utils import apply_unified_diff
 from .patch_engine import create_patch_engine
 from .prompts import PATCHER_TESTS, PLANNER_TESTS
 from .runner_common import (
+    MODEL_PATCH,
+    MODEL_PLAN,
     exit_noop,
     exit_success,
     get_logger,
@@ -174,8 +176,6 @@ def generate_test_patch_json(plan: str, context: str) -> Optional[str]:
     """
     logger.info("🔧 Generating test patch using JSON operations...")
 
-    params = get_default_params("patcher")
-
     # First attempt with full context
     patcher_prompt = f"""Plan: {plan}
 
@@ -186,13 +186,13 @@ File excerpts for patcher (copy exact text from these):
 Generate JSON operations to fix the failing tests. Copy exact text from the excerpts above."""
 
     patcher_response = chat(
-        model=str(params["model_patch"]),
+        model=str(MODEL_PATCH),
         messages=[
             {"role": "system", "content": PATCHER_TESTS},
             {"role": "user", "content": patcher_prompt},
         ],
         temperature=0.1,
-        max_tokens=int(params["max_tokens"]),
+        max_tokens=int(get_default_params("patcher")["max_tokens"]),
     )
 
     logger.info(f"🔧 LLM Patcher Response:\n{patcher_response}")
@@ -236,13 +236,13 @@ JSON format required:
 If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
 
     retry_response = chat(
-        model=str(params["model_patch"]),
+        model=str(MODEL_PATCH),
         messages=[
             {"role": "system", "content": PATCHER_TESTS},
             {"role": "user", "content": retry_prompt},
         ],
         temperature=0.1,
-        max_tokens=int(params["max_tokens"]),
+        max_tokens=int(get_default_params("patcher")["max_tokens"]),
     )
 
     logger.info(f"🔧 LLM Patcher Retry Response:\n{retry_response}")
@@ -372,7 +372,6 @@ def main() -> None:
     # Plan test fixes
     logger.info("🤖 Calling LLM Planner to analyze test failures...")
 
-    params = get_default_params("planner")
     planner_prompt = f"""Analyze these test failures and plan minimal fixes:
 
 {context}
@@ -382,13 +381,13 @@ NEVER edit configs, allowlists, or non-test modules.
 If fix requires non-test changes, reply: {{"abort": "out of scope"}}"""
 
     planner_response = chat(
-        model=str(params["model_plan"]),
+        model=str(MODEL_PLAN),
         messages=[
             {"role": "system", "content": PLANNER_TESTS},
             {"role": "user", "content": planner_prompt},
         ],
         temperature=0.1,
-        max_tokens=int(params["max_tokens"]),
+        max_tokens=int(get_default_params("planner")["max_tokens"]),
     )
 
     logger.info(f"🧠 LLM Planner Response:\n{planner_response}")
@@ -413,13 +412,13 @@ If you cannot fix the tests, reply:
 {{"abort": "cannot comply with constraints"}}"""
 
         planner_response = chat(
-            model=str(params["model_plan"]),
+            model=str(MODEL_PLAN),
             messages=[
                 {"role": "system", "content": PLANNER_TESTS},
                 {"role": "user", "content": scope_reminder},
             ],
             temperature=0.1,
-            max_tokens=int(params["max_tokens"]),
+            max_tokens=int(get_default_params("planner")["max_tokens"]),
         )
 
         logger.info(f"🧠 LLM Planner Retry Response:\n{planner_response}")
