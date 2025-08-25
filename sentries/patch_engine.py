@@ -17,13 +17,10 @@ from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
-# Allowed paths for modifications (tests/, docs/, README.md)
+# Allowed paths for modifications (tests only for TestSentry)
 ALLOWED_PATHS = {
     "tests/",
-    "docs/",
-    "README.md",
     "sentries/test_",
-    "sentries/docsentry.py",
 }
 
 # Guardrails

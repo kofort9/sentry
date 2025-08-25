@@ -71,7 +71,7 @@ include = ["sentries*"]
 sentries = ["*.py"]
 
 [tool.pytest.ini_options]
-testpaths = ["sentries"]
+testpaths = ["tests", "sentries"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
