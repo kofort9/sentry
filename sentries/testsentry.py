@@ -138,32 +138,59 @@ def validate_planner_scope(planner_response: str) -> tuple[bool, str]:
 
 def get_test_context_with_excerpts(test_output: str) -> str:
     """
-    Get minimal test context with only failing test excerpts.
+    Get minimal test context with actual source code from failing tests.
 
     Args:
         test_output: pytest output with failures
 
     Returns:
-        Minimal context string for LLM
+        Context string with actual source code for LLM
     """
-    logger.info("🔍 Extracting minimal test context from pytest output")
+    logger.info("🔍 Extracting test file contents for failing tests")
 
-    # Extract only failing test information
+    # Extract test file names from pytest output
     lines = test_output.split("\n")
-    context_lines = []
+    test_files = set()
 
     for line in lines:
-        # Include test failure messages and file paths
-        if any(
-            keyword in line.lower()
-            for keyword in ["failed", "error", "assertionerror", "tests/", "test_", "::test_"]
-        ):
-            context_lines.append(line)
+        # Look for test file paths in pytest output
+        if "tests/" in line and (".py::" in line or "FAILED" in line):
+            # Extract the file path before the :: or FAILED
+            parts = line.split()
+            for part in parts:
+                if "tests/" in part and ".py" in part:
+                    file_path = part.split("::")[0]  # Remove test function name
+                    if file_path.endswith(".py"):
+                        test_files.add(file_path)
+                    break
 
-    # Limit context size
-    context = "\n".join(context_lines[-50:])  # Last 50 relevant lines
+    # Read actual source code from failing test files
+    context_parts = []
+    context_parts.append("=== Pytest Failure Summary ===")
 
-    logger.info(f"📝 Extracted {len(context_lines)} relevant lines from test output")
+    # Add brief failure info
+    failure_lines = []
+    for line in lines:
+        if any(keyword in line.lower() for keyword in ["failed", "assertionerror", "assert "]):
+            failure_lines.append(line.strip())
+    context_parts.append("\n".join(failure_lines[-10:]))  # Last 10 failure lines
+
+    # Add actual source code
+    for test_file in sorted(test_files):
+        try:
+            logger.info(f"📖 Reading source code from {test_file}")
+            with open(test_file, "r") as f:
+                file_content = f.read()
+
+            context_parts.append(f"\n=== Source Code: {test_file} ===")
+            context_parts.append(file_content)
+
+        except Exception as e:
+            logger.warning(f"⚠️ Could not read {test_file}: {e}")
+            continue
+
+    context = "\n".join(context_parts)
+    logger.info(f"📝 Extracted source code from {len(test_files)} test files")
     return context
 
 
@@ -183,11 +210,12 @@ def generate_test_patch_json(plan: str, context: str) -> Optional[str]:
     # First attempt with full context
     patcher_prompt = f"""Plan: {plan}
 
-File excerpts for patcher (copy exact text from these):
+IMPORTANT: Look for the source code sections below (marked with "=== Source Code: ===").
+You must copy the exact text from the actual source code, NOT from pytest error messages.
 
 {context}
 
-Generate JSON operations to fix the failing tests. Copy exact text from the excerpts above."""
+Generate JSON operations to fix the failing tests. Copy exact text from the source code sections above."""
 
     patcher_response = chat(
         model=str(MODEL_PATCH),
@@ -237,12 +265,15 @@ Generate JSON operations to fix the failing tests. Copy exact text from the exce
 
 CRITICAL: You MUST respond with ONLY valid JSON.
 
-File excerpts (copy exact text from these):
+Source code excerpt (copy exact text from the source code, NOT pytest output):
 
 {retry_context}
 
 JSON format required:
-{{"ops": [{{"file": "tests/test_file.py", "find": "exact text", "replace": "replacement"}}]}}
+{{"ops": [{{"file": "tests/test_file.py", "find": "exact source code text", "replace": "replacement"}}]}}
+
+Example: To fix "assert 1 == 2" to pass, use:
+{{"ops": [{{"file": "tests/test_basic.py", "find": "assert 1 == 2", "replace": "assert 1 == 1"}}]}}
 
 If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
 
