@@ -215,7 +215,8 @@ You must copy the exact text from the actual source code, NOT from pytest error 
 
 {context}
 
-Generate JSON operations to fix the failing tests. Copy exact text from the source code sections above."""
+Generate JSON operations to fix the failing tests.
+Copy exact text from the source code sections above."""
 
     patcher_response = chat(
         model=str(MODEL_PATCH),
@@ -270,10 +271,14 @@ Source code excerpt (copy exact text from the source code, NOT pytest output):
 {retry_context}
 
 JSON format required:
-{{"ops": [{{"file": "tests/test_file.py", "find": "exact source code text", "replace": "replacement"}}]}}
+{{"ops": [{{"file": "tests/test_file.py",
+            "find": "exact source code text",
+            "replace": "replacement"}}]}}
 
 Example: To fix "assert 1 == 2" to pass, use:
-{{"ops": [{{"file": "tests/test_basic.py", "find": "assert 1 == 2", "replace": "assert 1 == 1"}}]}}
+{{"ops": [{{"file": "tests/test_basic.py",
+            "find": "assert 1 == 2",
+            "replace": "assert 1 == 1"}}]}}
 
 If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
 
