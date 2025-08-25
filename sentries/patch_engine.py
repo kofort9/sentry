@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 # Allowed paths for modifications (tests only for TestSentry)
 ALLOWED_PATHS = {
     "tests/",
-    "sentries/test_*.py",
 }
 
 # Guardrails
@@ -44,6 +43,12 @@ class PatchOperation:
             raise ValueError("find must be a non-empty string")
         if not isinstance(self.replace, str):
             raise ValueError("replace must be a string")
+
+        # Size guards for find/replace strings
+        if len(self.find) > 2000:
+            raise ValueError("find string too long (max 2000 characters)")
+        if len(self.replace) > 2000:
+            raise ValueError("replace string too long (max 2000 characters)")
 
 
 class PatchEngineError(Exception):
@@ -180,11 +185,16 @@ class PatchEngine:
             if op.file != file_path:
                 continue
 
-            # Find the exact substring
-            if op.find not in modified_content:
+            # Find the exact substring and check uniqueness
+            find_count = modified_content.count(op.find)
+            if find_count == 0:
                 raise ValidationError(f"Find text not found in {file_path}: {repr(op.find[:100])}")
+            elif find_count > 1:
+                raise ValidationError(
+                    f"Find text appears {find_count} times in {file_path}, must be unique: {repr(op.find[:100])}"
+                )
 
-            # Apply the replacement
+            # Apply the replacement (safe since we know it's unique)
             modified_content = modified_content.replace(op.find, op.replace, 1)
             applied_ops += 1
 
@@ -263,8 +273,25 @@ class PatchEngine:
             # Parse JSON
             data = json.loads(operations_json)
 
-            if not isinstance(data, dict) or "ops" not in data:
+            # Strict JSON format validation
+            if not isinstance(data, dict):
+                raise ValidationError("JSON must be a single object")
+
+            # Check for exactly the required key structure
+            allowed_keys = {"ops", "abort"}
+            if "abort" in data:
+                # Handle abort case
+                if len(data) != 1 or not isinstance(data["abort"], str):
+                    raise ValidationError("Abort response must be exactly {'abort': 'reason'}")
+                raise ValidationError(f"Operation aborted: {data['abort']}")
+
+            if "ops" not in data:
                 raise ValidationError("JSON must contain 'ops' key")
+
+            # Check for extra keys
+            extra_keys = set(data.keys()) - allowed_keys
+            if extra_keys:
+                raise ValidationError(f"JSON contains unexpected keys: {extra_keys}")
 
             ops_data = data["ops"]
             if not isinstance(ops_data, list) or not ops_data:
@@ -280,6 +307,11 @@ class PatchEngine:
                     required_keys = {"file", "find", "replace"}
                     if not all(key in op_data for key in required_keys):
                         raise ValueError(f"Missing required keys: {required_keys}")
+
+                    # Check for extra keys
+                    extra_keys = set(op_data.keys()) - required_keys
+                    if extra_keys:
+                        raise ValueError(f"Operation contains unexpected keys: {extra_keys}")
 
                     operation = PatchOperation(
                         file=op_data["file"], find=op_data["find"], replace=op_data["replace"]

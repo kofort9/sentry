@@ -100,9 +100,13 @@ def validate_planner_scope(planner_response: str) -> tuple[bool, str]:
         # Try to parse as JSON
         data = json.loads(planner_response)
 
-        # Check for abort responses
+        # Check for abort responses (new consistent format)
         if "abort" in data:
-            return False, f"Planner aborted: {data['abort']}"
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                return False, f"Planner aborted: {abort_reason}"
+            else:
+                return False, f"Planner aborted with invalid reason: {abort_reason}"
 
         # Check for required fields
         if not isinstance(data, dict):
@@ -121,7 +125,7 @@ def validate_planner_scope(planner_response: str) -> tuple[bool, str]:
                 return False, f"Invalid file path type: {type(file_path)}"
 
             # Check if path is test-only
-            if not (file_path.startswith("tests/") or file_path.startswith("sentries/test_")):
+            if not file_path.startswith("tests/"):
                 return False, f"Non-test file targeted: {file_path}"
 
         return True, "Planner response is valid and test-only"
@@ -199,13 +203,20 @@ Generate JSON operations to fix the failing tests. Copy exact text from the exce
 
     # Try to process the response
     try:
-        # Check for abort responses
-        if "abort" in patcher_response.lower():
-            logger.warning(f"⚠️ Patcher aborted: {patcher_response}")
-            return None
-
-        # Try to parse as JSON
+        # Try to parse as JSON first
         data = json.loads(patcher_response)
+
+        # Check for abort responses (new consistent format)
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                logger.warning(f"⚠️ Patcher aborted: {abort_reason}")
+                return None
+            else:
+                logger.warning(f"⚠️ Patcher aborted with invalid reason: {abort_reason}")
+                return None
+
+        # Check for valid operations
         if "ops" in data and isinstance(data["ops"], list):
             logger.info("✅ Patcher generated valid JSON operations")
             return patcher_response
@@ -249,11 +260,20 @@ If you cannot create valid JSON operations, reply: {{"abort": "cannot comply wit
 
     # Try to process retry response
     try:
-        if "abort" in retry_response.lower():
-            logger.warning(f"⚠️ Patcher retry aborted: {retry_response}")
-            return None
-
+        # Try to parse as JSON first
         data = json.loads(retry_response)
+
+        # Check for abort responses (new consistent format)
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                logger.warning(f"⚠️ Patcher retry aborted: {abort_reason}")
+                return None
+            else:
+                logger.warning(f"⚠️ Patcher retry aborted with invalid reason: {abort_reason}")
+                return None
+
+        # Check for valid operations
         if "ops" in data and isinstance(data["ops"], list):
             logger.info("✅ Patcher retry generated valid JSON operations")
             return retry_response
@@ -400,8 +420,8 @@ If fix requires non-test changes, reply: {{"abort": "out of scope"}}"""
         # One retry with scope reminder
         logger.info("🔄 Retrying planner with scope reminder...")
         scope_reminder = f"""SCOPE REMINDER:
-You can ONLY modify test files (tests/**, sentries/test_*.py).
-You CANNOT modify configs, allowlists, or production code.
+You can ONLY modify files in the tests/ directory.
+You CANNOT modify any other files.
 
 {context}
 

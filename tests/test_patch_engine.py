@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from .patch_engine import (
+from sentries.patch_engine import (
     NoEffectiveChangeError,
     PatchEngine,
     PatchOperation,

@@ -8,7 +8,7 @@ import sys
 from typing import Optional
 
 # Constants
-TESTS_ALLOWLIST = ["tests/", "sentries/test_*.py"]
+TESTS_ALLOWLIST = ["tests/"]
 DOCS_ALLOWLIST = ["README.md", "docs/", "CHANGELOG.md", "ARCHITECTURE.md", "ADR/", "openapi.yaml"]
 
 # Environment variables
