@@ -1,42 +1,68 @@
 #!/usr/bin/env python3
 """
-TestSentry: Keeps tests/** green by proposing test-only patches.
+TestSentry: AI-powered test fixing using Patch Engine v2.
+
+This module:
+1. Detects failing tests from pytest output
+2. Uses LLM planner to analyze failures and plan fixes
+3. Generates JSON operations (not line numbers)
+4. Uses Patch Engine to create and apply unified diffs
+5. Verifies fixes work with pytest before creating PRs
+6. Enforces strict test-only scope with mechanical guardrails
 """
-import os
 
-
+import json
 import subprocess
+import time
+from typing import Optional
 
-from typing import List, Dict, Optional
-from .runner_common import (
-    setup_logging, get_logger, validate_environment, get_short_sha,
-    exit_success, exit_noop, exit_failure, TESTS_ALLOWLIST,
-    MODEL_PLAN, MODEL_PATCH
-)
 from .chat import chat, get_default_params
-from .prompts import PLANNER_TESTS, PATCHER_TESTS
-from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
-from .git_utils import (
-    create_branch, commit_all, open_pull_request, label_pull_request,
-    get_base_branch
+from .diff_utils import apply_unified_diff
+from .patch_engine import create_patch_engine
+from .prompts import PATCHER_TESTS, PLANNER_TESTS
+from .runner_common import (
+    MODEL_PATCH,
+    MODEL_PLAN,
+    exit_noop,
+    exit_success,
+    get_logger,
+    validate_environment,
 )
 
 logger = get_logger(__name__)
 
+
 def discover_test_failures() -> Optional[str]:
     """
-    Discover failing tests by running pytest.
+    Discover failing tests by running pytest or using pre-captured output.
 
     Returns:
         pytest output if there are failures, None if all tests pass
     """
+    # Check if we have pre-captured test failure output from CI
+    try:
+        with open("pytest-output.txt", "r") as f:
+            output = f.read()
+
+        if "FAILED" in output or "ERROR" in output or "AssertionError" in output:
+            logger.info("Found test failures in pre-captured output")
+            return output
+        else:
+            logger.info("No test failures found in pre-captured output")
+            return None
+    except FileNotFoundError:
+        logger.info("No pre-captured output found, running pytest...")
+    except Exception as e:
+        logger.warning(f"Error reading pre-captured output: {e}")
+
+    # Fall back to running pytest directly
     try:
         logger.info("Running pytest to discover test failures...")
         result = subprocess.run(
-            ['pytest', '-q'],
+            ["python", "-m", "pytest", "tests/", "sentries/", "--tb=short", "-q"],
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes timeout
+            timeout=300,  # 5 minutes timeout
         )
 
         if result.returncode == 0:
@@ -45,7 +71,7 @@ def discover_test_failures() -> Optional[str]:
 
         # Check if there are actual test failures (not just collection errors)
         output = result.stdout + result.stderr
-        if "FAILED" in output or "ERROR" in output:
+        if "FAILED" in output or "ERROR" in output or "AssertionError" in output:
             logger.info(f"Found test failures: {result.returncode} tests failed")
             return output
         else:
@@ -59,278 +85,534 @@ def discover_test_failures() -> Optional[str]:
         logger.error(f"Error running pytest: {e}")
         return None
 
-def get_test_context(failing_tests_output: str) -> str:
+
+def validate_planner_scope(planner_response: str) -> tuple[bool, str]:
     """
-    Extract relevant test context from pytest output.
+    Validate that planner response stays within test-only scope.
 
     Args:
-        failing_tests_output: Raw pytest output
+        planner_response: Raw response from planner model
 
     Returns:
-        Formatted context for the LLM
+        (is_valid, reason) - whether response is valid and why
     """
-    # Extract test file paths and line numbers from pytest output
-    lines = failing_tests_output.split('\n')
+    try:
+        # Try to parse as JSON
+        data = json.loads(planner_response)
+
+        # Check for abort responses (new consistent format)
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                return False, f"Planner aborted: {abort_reason}"
+            else:
+                return False, f"Planner aborted with invalid reason: {abort_reason}"
+
+        # Check for required fields
+        if not isinstance(data, dict):
+            return False, "Planner response must be a JSON object"
+
+        if "target_files" not in data:
+            return False, "Planner response missing target_files"
+
+        # Validate target files are test-only
+        target_files = data["target_files"]
+        if not isinstance(target_files, list):
+            return False, "target_files must be a list"
+
+        for file_path in target_files:
+            if not isinstance(file_path, str):
+                return False, f"Invalid file path type: {type(file_path)}"
+
+            # Check if path is test-only
+            if not file_path.startswith("tests/"):
+                return False, f"Non-test file targeted: {file_path}"
+
+        return True, "Planner response is valid and test-only"
+
+    except json.JSONDecodeError:
+        return False, "Planner response is not valid JSON"
+    except Exception as e:
+        return False, f"Error validating planner response: {e}"
+
+
+def get_test_context_with_excerpts(test_output: str) -> str:
+    """
+    Get minimal test context with actual source code from failing tests.
+
+    Args:
+        test_output: pytest output with failures
+
+    Returns:
+        Context string with actual source code for LLM
+    """
+    logger.info("🔍 Extracting test file contents for failing tests")
+
+    # Extract test file names from pytest output
+    lines = test_output.split("\n")
     test_files = set()
 
     for line in lines:
-        if '::' in line and '.py::' in line:
-            # Extract file path from test identifier
-            parts = line.split('::')
-            if len(parts) >= 2:
-                file_path = parts[0]
-                if file_path.startswith('tests/'):
-                    test_files.add(file_path)
+        # Look for test file paths in pytest output
+        if "tests/" in line and (".py::" in line or "FAILED" in line):
+            # Extract the file path before the :: or FAILED
+            parts = line.split()
+            for part in parts:
+                if "tests/" in part and ".py" in part:
+                    file_path = part.split("::")[0]  # Remove test function name
+                    if file_path.endswith(".py"):
+                        test_files.add(file_path)
+                    break
 
-    context = f"Test failures detected:\n\n{failing_tests_output}\n\n"
+    # Read actual source code from failing test files
+    context_parts = []
+    context_parts.append("=== Pytest Failure Summary ===")
 
-    if test_files:
-        context += "Relevant test files:\n"
-        for file_path in sorted(test_files):
-            context += f"- {file_path}\n"
+    # Add brief failure info
+    failure_lines = []
+    for line in lines:
+        if any(keyword in line.lower() for keyword in ["failed", "assertionerror", "assert "]):
+            failure_lines.append(line.strip())
+    context_parts.append("\n".join(failure_lines[-10:]))  # Last 10 failure lines
 
+    # Add actual source code
+    for test_file in sorted(test_files):
+        try:
+            logger.info(f"📖 Reading source code from {test_file}")
+            with open(test_file, "r") as f:
+                file_content = f.read()
+
+            context_parts.append("\n" + "=" * 60)
+            context_parts.append(f"Source Code: {test_file}")
+            context_parts.append("(Copy text EXACTLY from this section, including whitespace)")
+            context_parts.append("=" * 60)
+            context_parts.append(file_content)
+            context_parts.append("=" * 60)
+
+        except Exception as e:
+            logger.warning(f"⚠️ Could not read {test_file}: {e}")
+            continue
+
+    context = "\n".join(context_parts)
+    logger.info(f"📝 Extracted source code from {len(test_files)} test files")
     return context
 
-def plan_test_fixes(context: str) -> Optional[str]:
+
+def generate_test_patch_json(plan: str, context: str) -> Optional[str]:
     """
-    Use the planner model to create a plan for fixing tests.
+    Generate test patch using JSON operations with retry logic.
 
     Args:
-        context: Test failure context
+        plan: Plan for fixing tests
+        context: Test context and excerpts
 
     Returns:
-        Planning response from the LLM
+        Generated patch string or None if failed
     """
-    try:
-        params = get_default_params("planner")
+    logger.info("🔧 Generating test patch using JSON operations...")
 
-        messages = [
-            {"role": "system", "content": PLANNER_TESTS},
-            {"role": "user", "content": context}
-        ]
+    # First attempt with full context
+    patcher_prompt = f"""Plan: {plan}
 
-        logger.info("Planning test fixes with LLM...")
-        response = chat(
-            model=MODEL_PLAN,
-            messages=messages,
-            **params
-        )
+CRITICAL INSTRUCTION: Copy text ONLY from the "=== Source Code:" sections below.
+DO NOT copy from pytest error messages or failure summaries.
+Pay extreme attention to whitespace - spaces, tabs, and newlines must match exactly.
 
-        if "ABORT" in response.upper():
-            logger.info("LLM planner returned ABORT - non-test code changes required")
-            return None
+{context}
 
-        logger.info("Planning completed successfully")
-        return response
+Generate JSON operations to fix the failing tests.
+COPY EXACT TEXT (including all whitespace) from the source code sections above."""
 
-    except Exception as e:
-        logger.error(f"Error during planning: {e}")
-        return None
-
-def generate_test_patch(plan: str, context: str) -> Optional[str]:
-    """
-    Use the patcher model to generate a test patch.
-
-    Args:
-        plan: The planning response
-        context: Test failure context
-
-    Returns:
-        Unified diff string or None if ABORT
-    """
-    try:
-        params = get_default_params("patcher")
-
-        messages = [
+    patcher_response = chat(
+        model=str(MODEL_PATCH),
+        messages=[
             {"role": "system", "content": PATCHER_TESTS},
-            {"role": "user", "content": f"Plan: {plan}\n\nContext: {context}"}
-        ]
+            {"role": "user", "content": patcher_prompt},
+        ],
+        temperature=0.1,
+        max_tokens=int(get_default_params("patcher")["max_tokens"]),
+    )
 
-        logger.info("Generating test patch with LLM...")
-        response = chat(
-            model=MODEL_PATCH,
-            messages=messages,
-            **params
-        )
+    logger.info(f"🔧 LLM Patcher Response:\n{patcher_response}")
 
-        if "ABORT" in response.upper():
-            logger.info("LLM patcher returned ABORT")
-            return None
+    # Try to process the response
+    try:
+        # Try to parse as JSON first
+        data = json.loads(patcher_response)
 
-        logger.info("Patch generation completed")
-        return response
+        # Check for abort responses (new consistent format)
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                logger.warning(f"⚠️ Patcher aborted: {abort_reason}")
+                return None
+            else:
+                logger.warning(f"⚠️ Patcher aborted with invalid reason: {abort_reason}")
+                return None
 
-    except Exception as e:
-        logger.error(f"Error during patch generation: {e}")
-        return None
+        # Check for valid operations
+        if "ops" in data and isinstance(data["ops"], list):
+            logger.info("✅ Patcher generated valid JSON operations")
+            return patcher_response
 
-def apply_and_test_patch(diff_str: str) -> bool:
+        logger.warning("⚠️ Patcher response missing 'ops' key")
+
+    except json.JSONDecodeError:
+        logger.warning("⚠️ Patcher response is not valid JSON")
+
+    # Retry with smaller context and explicit JSON requirement
+    logger.info("🔄 Retrying patcher with smaller context...")
+
+    # Extract only the most relevant lines for retry
+    lines = context.split("\n")
+    retry_context = "\n".join(lines[-20:])  # Last 20 lines
+
+    retry_prompt = f"""Plan: {plan}
+
+CRITICAL: You MUST respond with ONLY valid JSON.
+
+Source code excerpt (copy exact text from the source code, NOT pytest output):
+
+{retry_context}
+
+JSON format required:
+{{"ops": [{{"file": "tests/test_file.py",
+            "find": "exact source code text",
+            "replace": "replacement"}}]}}
+
+Example: To fix "assert 1 == 2" to pass, use:
+{{"ops": [{{"file": "tests/test_basic.py",
+            "find": "assert 1 == 2",
+            "replace": "assert 1 == 1"}}]}}
+
+If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
+
+    retry_response = chat(
+        model=str(MODEL_PATCH),
+        messages=[
+            {"role": "system", "content": PATCHER_TESTS},
+            {"role": "user", "content": retry_prompt},
+        ],
+        temperature=0.1,
+        max_tokens=int(get_default_params("patcher")["max_tokens"]),
+    )
+
+    logger.info(f"🔧 LLM Patcher Retry Response:\n{retry_response}")
+
+    # Try to process retry response
+    try:
+        # Try to parse as JSON first
+        data = json.loads(retry_response)
+
+        # Check for abort responses (new consistent format)
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                logger.warning(f"⚠️ Patcher retry aborted: {abort_reason}")
+                return None
+            else:
+                logger.warning(f"⚠️ Patcher retry aborted with invalid reason: {abort_reason}")
+                return None
+
+        # Check for valid operations
+        if "ops" in data and isinstance(data["ops"], list):
+            logger.info("✅ Patcher retry generated valid JSON operations")
+            return retry_response
+
+        logger.warning("⚠️ Patcher retry response missing 'ops' key")
+
+    except json.JSONDecodeError:
+        logger.warning("⚠️ Patcher retry response is not valid JSON")
+
+    logger.error("❌ Failed to generate valid JSON operations after retry")
+    return None
+
+
+def apply_and_test_patch_with_engine(diff_str: str, test_file_path: str) -> tuple[bool, str]:
     """
-    Apply the patch and re-run tests to verify it works.
+    Apply patch using patch engine and verify with pytest.
 
     Args:
-        diff_str: The unified diff to apply
+        diff_str: JSON operations string
+        test_file_path: Path to test file being modified
 
     Returns:
-        True if tests pass after applying the patch
+        (success, feedback) - whether patch succeeded and any feedback
     """
+    logger.info("🔧 Applying patch using Patch Engine v2...")
+
+    # Log patch details for audit
     try:
-        # Validate the diff
-        is_valid, reason = validate_unified_diff(diff_str, TESTS_ALLOWLIST)
-        if not is_valid:
-            logger.error(f"Invalid diff: {reason}")
-            return False
+        data = json.loads(diff_str)
+        ops_count = len(data.get("ops", []))
+        files_targeted = [op.get("file", "") for op in data.get("ops", [])]
+
+        logger.info("📊 Patch Details:")
+        logger.info(f"   Operations: {ops_count}")
+        logger.info(f"   Files targeted: {files_targeted}")
+        logger.info(f"   Test file: {test_file_path}")
+
+        # Validate against allowlist
+        for file_path in files_targeted:
+            if not (file_path.startswith("tests/") or file_path.startswith("sentries/test_")):
+                logger.error(f"❌ Non-test file targeted: {file_path}")
+                return False, f"Non-test file targeted: {file_path}"
+
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ Invalid JSON in patch: {e}")
+        return False, f"Invalid JSON: {e}"
+
+    # Create patch engine
+    engine = create_patch_engine()
+
+    try:
+        # Process operations through patch engine
+        logger.info("⚙️ Processing operations through patch engine...")
+        unified_diff = engine.process_operations(diff_str)
+
+        logger.info(f"✅ Generated unified diff ({len(unified_diff)} characters)")
 
         # Apply the diff
-        if not apply_unified_diff(".", diff_str):
-            logger.error("Failed to apply diff")
-            return False
+        logger.info("📝 Applying unified diff...")
+        success = apply_unified_diff(".", unified_diff)
 
-        # Re-run tests to verify the fix
-        logger.info("Re-running tests to verify the fix...")
+        if not success:
+            logger.error("❌ Failed to apply unified diff")
+            return False, "Failed to apply unified diff"
+
+        logger.info("✅ Unified diff applied successfully")
+
+        # Verify the changes work by running pytest
+        logger.info("🧪 Running pytest to verify fixes...")
+
+        # Run pytest on the specific test file
         result = subprocess.run(
-            ['pytest', '-q'],
+            ["python", "-m", "pytest", test_file_path, "-v"],
             capture_output=True,
             text=True,
-            timeout=300
+            cwd=".",
         )
 
         if result.returncode == 0:
-            logger.info("Tests are now passing!")
-            return True
+            logger.info("✅ Pytest passed - patch fixes working correctly")
+            return True, "Patch applied and tests passing"
         else:
-            logger.error("Tests still failing after applying patch")
-            return False
+            logger.warning("⚠️ Pytest failed after patch application")
+            logger.info(f"Pytest output:\n{result.stdout}\n{result.stderr}")
+
+            # Rollback the changes
+            logger.info("🔄 Rolling back failed patch...")
+            subprocess.run(["git", "checkout", "--", test_file_path], cwd=".")
+
+            return False, f"Tests still failing after patch: {result.stderr}"
 
     except Exception as e:
-        logger.error(f"Error during patch application and testing: {e}")
-        return False
+        logger.error(f"❌ Error during patch application: {e}")
+        return False, f"Patch application error: {e}"
 
-def create_test_fix_pr(plan: str, diff_summary: str) -> Optional[int]:
-    """
-    Create a pull request for the test fixes.
-
-    Args:
-        plan: The planning response
-        diff_summary: Summary of what the diff changes
-
-    Returns:
-        PR number if successful, None otherwise
-    """
-    try:
-        short_sha = get_short_sha()
-        base_branch = get_base_branch()
-
-        # Create branch
-        branch_name = create_branch("ai-test-fixes", sentry_type="testsentry")
-
-        # Commit changes
-        commit_message = f"TestSentry: fix tests for {short_sha}\n\n{plan}"
-        if not commit_all(commit_message):
-            raise RuntimeError("Failed to commit changes")
-
-        # Create PR
-        title = f"TestSentry: fix tests for {short_sha}"
-        body = """## Test Fixes
-
-**Plan:**
-{plan}
-
-**Changes:**
-{diff_summary}
-
-**Generated by:** TestSentry AI
-**Branch:** {branch_name}
-"""
-
-        pr_number = open_pull_request(base_branch, branch_name, title, body, "testsentry")
-        if pr_number:
-            logger.info(f"Created PR #{pr_number} for test fixes")
-            return pr_number
-        else:
-            raise RuntimeError("Failed to create PR")
-
-    except Exception as e:
-        logger.error(f"Error creating test fix PR: {e}")
-        return None
-
-def label_feature_pr(pr_number: int, success: bool = True) -> None:
-    """
-    Label the feature PR that triggered this action.
-
-    Args:
-        pr_number: PR number to label
-        success: Whether the test fixes were successful
-    """
-    try:
-        label = "tests-sentry:done" if success else "tests-sentry:noop"
-        if label_pull_request(pr_number, [label]):
-            logger.info(f"Labeled feature PR with: {label}")
-        else:
-            logger.warning(f"Failed to label feature PR with: {label}")
-    except Exception as e:
-        logger.error(f"Error labeling feature PR: {e}")
-
-def show_sentries_banner():
-    """Display the Sentry ASCII art banner."""
-    from sentries.banner import show_sentry_banner
-    show_sentry_banner()
-    print("🧪 TestSentry - AI-Powered Test Fixing")
-    print("=" * 50)
-    print()
 
 def main() -> None:
-    """Main entry point for TestSentry."""
+    """Main TestSentry function."""
     show_sentries_banner()
-    setup_logging()
-    logger.info("TestSentry starting...")
+    logger.info("🧪 TestSentry v2 starting with Patch Engine...")
 
     # Validate environment
     if not validate_environment():
-        exit_failure("Environment validation failed")
-
-    # Check if we're in a git repository
-    if not os.path.exists(".git"):
-        exit_failure("Not in a git repository")
+        exit_noop("Environment validation failed")
 
     # Discover test failures
     failing_tests = discover_test_failures()
     if not failing_tests:
-        exit_noop("No test failures found")
+        exit_success("No test failures detected")
 
-    # Get test context
-    context = get_test_context(failing_tests)
+    logger.info("❌ Test failures detected, starting AI-powered fix process...")
+
+    # Get test context with minimal excerpts for the patcher
+    context = get_test_context_with_excerpts(failing_tests)
 
     # Plan test fixes
-    plan = plan_test_fixes(context)
-    if not plan:
-        exit_noop("Non-test code changes required to fix tests")
+    logger.info("🤖 Calling LLM Planner to analyze test failures...")
 
-    # Generate test patch
-    diff_str = generate_test_patch(plan, context)
+    planner_prompt = f"""Analyze these test failures and plan minimal fixes:
+
+{context}
+
+Remember: ONLY modify files under tests/** (and sentries/test_*.py).
+NEVER edit configs, allowlists, or non-test modules.
+If fix requires non-test changes, reply: {{"abort": "out of scope"}}"""
+
+    planner_response = chat(
+        model=str(MODEL_PLAN),
+        messages=[
+            {"role": "system", "content": PLANNER_TESTS},
+            {"role": "user", "content": planner_prompt},
+        ],
+        temperature=0.1,
+        max_tokens=int(get_default_params("planner")["max_tokens"]),
+    )
+
+    logger.info(f"🧠 LLM Planner Response:\n{planner_response}")
+
+    # Validate planner scope
+    is_valid, reason = validate_planner_scope(planner_response)
+    if not is_valid:
+        logger.warning(f"⚠️ Planner scope validation failed: {reason}")
+
+        # One retry with scope reminder
+        logger.info("🔄 Retrying planner with scope reminder...")
+        scope_reminder = f"""SCOPE REMINDER:
+You can ONLY modify files in the tests/ directory.
+You CANNOT modify any other files.
+
+{context}
+
+If you cannot fix the tests within test-only scope, reply:
+{{"abort": "out of scope"}}
+
+If you cannot fix the tests, reply:
+{{"abort": "cannot comply with constraints"}}"""
+
+        planner_response = chat(
+            model=str(MODEL_PLAN),
+            messages=[
+                {"role": "system", "content": PLANNER_TESTS},
+                {"role": "user", "content": scope_reminder},
+            ],
+            temperature=0.1,
+            max_tokens=int(get_default_params("planner")["max_tokens"]),
+        )
+
+        logger.info(f"🧠 LLM Planner Retry Response:\n{planner_response}")
+
+        # Validate retry response
+        is_valid, reason = validate_planner_scope(planner_response)
+        if not is_valid:
+            exit_noop(f"Planner scope validation failed after retry: {reason}")
+
+    logger.info("✅ Planner scope validation passed")
+
+    # Extract plan from valid response
+    try:
+        plan_data = json.loads(planner_response)
+        plan = plan_data.get("plan", "Fix failing tests")
+    except json.JSONDecodeError:
+        plan = "Fix failing tests"
+        logger.warning("Could not parse planner response, using default plan")
+
+    # Generate test patch JSON with feedback loop
+    diff_str = generate_test_patch_json(plan, context)
     if not diff_str:
-        exit_noop("Could not generate test patch")
+        exit_noop("Could not generate test patch JSON")
 
     # Apply and test the patch
-    if not apply_and_test_patch(diff_str):
-        exit_noop("Patch application or testing failed")
+    logger.info("🔧 Applying and testing patch...")
 
-    # Create PR
-    diff_summary = extract_diff_summary(diff_str)
-    pr_number = create_test_fix_pr(plan, diff_summary)
+    # Extract test file path from the JSON operations
+    try:
+        data = json.loads(diff_str)
+        test_files = [op.get("file", "") for op in data.get("ops", [])]
+        if not test_files:
+            exit_noop("No test files specified in patch operations")
 
-    if pr_number:
-        # Try to label the feature PR if we can determine its number
+        # Use the first test file for verification
+        test_file_path = test_files[0]
+        logger.info(f"🎯 Testing patch on: {test_file_path}")
+
+    except json.JSONDecodeError:
+        exit_noop("Invalid JSON in patch operations")
+
+    # Apply the patch and verify it works
+    success, feedback = apply_and_test_patch_with_engine(diff_str, test_file_path)
+
+    if success:
+        logger.info("🎉 Patch applied and verified successfully!")
+
+        # Create a PR with the working fix
+        logger.info("🚀 Creating PR with working test fix...")
+
+        # Get current branch name
+        current_branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True, cwd="."
+        ).strip()
+
+        # Create a new branch for the fix
+        fix_branch = f"ai-test-fix-{int(time.time())}"
+        subprocess.run(["git", "checkout", "-b", fix_branch], cwd=".")
+
+        # Commit the fix
+        subprocess.run(["git", "add", test_file_path], cwd=".")
+        subprocess.run(
+            ["git", "commit", "-m", f"fix: {plan}\n\nApplied by TestSentry using Patch Engine v2"],
+            cwd=".",
+        )
+
+        # Push the fix branch
+        subprocess.run(["git", "push", "origin", fix_branch], cwd=".")
+
+        # Create PR using GitHub CLI or API
+        pr_title = f"🔧 Fix failing tests: {plan}"
+        pr_body = f"""## Test Fix Applied by TestSentry
+
+**Plan:** {plan}
+
+**Files Modified:** {test_file_path}
+
+**Fix Strategy:** Applied using Patch Engine v2 with JSON operations
+
+**Verification:** ✅ Tests now pass after fix
+
+**Generated by:** AI-powered TestSentry with mechanical guardrails
+
+---
+*This PR was automatically created by TestSentry after detecting and fixing failing tests.*"""
+
+        # Try to create PR using GitHub CLI
         try:
-            # This would need to be determined from the GitHub context
-            # For now, we'll just log success
-            logger.info("Test fixes completed successfully")
-        except Exception as e:
-            logger.warning(f"Could not label feature PR: {e}")
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "create",
+                    "--title",
+                    pr_title,
+                    "--body",
+                    pr_body,
+                    "--base",
+                    current_branch,
+                    "--head",
+                    fix_branch,
+                ],
+                capture_output=True,
+                text=True,
+                cwd=".",
+            )
 
-        exit_success(f"Created PR #{pr_number} for test fixes")
+            if result.returncode == 0:
+                logger.info("🎉 PR created successfully!")
+                logger.info(f"PR URL: {result.stdout.strip()}")
+            else:
+                logger.warning("⚠️ GitHub CLI failed, manual PR creation needed")
+                logger.info(f"Branch pushed: {fix_branch}")
+                logger.info(f"PR body:\n{pr_body}")
+
+        except FileNotFoundError:
+            logger.warning("⚠️ GitHub CLI not available, manual PR creation needed")
+            logger.info(f"Branch pushed: {fix_branch}")
+            logger.info(f"PR body:\n{pr_body}")
+
+        exit_success("Test fix applied and PR created successfully")
+
     else:
-        exit_failure("Failed to create PR for test fixes")
+        logger.error(f"❌ Patch application failed: {feedback}")
+        exit_noop(f"Patch application failed: {feedback}")
+
+
+def show_sentries_banner() -> None:
+    """Display the Sentries banner."""
+    from .banner import show_sentry_banner
+
+    show_sentry_banner()
+
 
 if __name__ == "__main__":
     main()

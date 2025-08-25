@@ -1,142 +1,98 @@
 #!/usr/bin/env python3
 """
-DocSentry: Keeps docs in sync by proposing docs-only patches.
+DocSentry: Keeps documentation in sync with code changes.
+
+This version uses a robust patch engine that eliminates reliance on model-generated line numbers.
+Instead, it uses JSON find/replace operations that are converted to unified diffs locally.
 """
+
 import os
-import json
+from typing import Optional, Tuple
 
-
-import subprocess
-from typing import List, Dict, Optional, Tuple
-from .runner_common import (
-    setup_logging, get_logger, validate_environment, get_short_sha,
-    exit_success, exit_noop, exit_failure, DOCS_ALLOWLIST,
-    MODEL_PLAN, MODEL_PATCH, GITHUB_EVENT_PATH
-)
 from .chat import chat, get_default_params
-from .prompts import PLANNER_DOCS, PATCHER_DOCS
-from .diff_utils import validate_unified_diff, apply_unified_diff, extract_diff_summary
+from .diff_utils import apply_unified_diff, extract_diff_summary
 from .git_utils import (
-    create_branch, commit_all, open_pull_request, label_pull_request,
-    get_base_branch
+    commit_all,
+    create_branch,
+    get_base_branch,
+    open_pull_request,
+)
+from .patch_engine import (
+    NoEffectiveChangeError,
+    ValidationError,
+    create_patch_engine,
+)
+from .prompts import PATCHER_DOCS, PLANNER_DOCS
+from .runner_common import (
+    MODEL_PATCH,
+    MODEL_PLAN,
+    exit_failure,
+    exit_noop,
+    exit_success,
+    get_logger,
+    get_short_sha,
+    setup_logging,
+    validate_environment,
 )
 
 logger = get_logger(__name__)
 
-def read_github_event() -> Optional[Dict]:
+
+def get_pr_context() -> Optional[str]:
     """
-    Read and parse the GitHub event payload.
+    Get context about the current PR for documentation planning.
 
     Returns:
-        Parsed event data or None if not available
+        PR context string or None if not available
     """
-    if not GITHUB_EVENT_PATH or not os.path.exists(GITHUB_EVENT_PATH):
-        logger.warning("GitHub event file not found")
-        return None
+    # This would typically come from GitHub Actions context
+    # For now, we'll use a placeholder
+    return "Documentation updates needed for recent code changes"
 
-    try:
-        with open(GITHUB_EVENT_PATH, 'r') as f:
-            event_data = json.load(f)
 
-        logger.info(f"Read GitHub event: {event_data.get('action', 'unknown')}")
-        return event_data
-
-    except Exception as e:
-        logger.error(f"Error reading GitHub event: {e}")
-        return None
-
-def get_pr_context(event_data: Dict) -> Optional[Tuple[str, str, str]]:
+def get_docs_context_with_excerpts() -> Tuple[str, str]:
     """
-    Extract PR context from GitHub event data.
+    Get documentation context and create minimal excerpts for the patcher.
+
+    Returns:
+        Tuple of (full_context, minimal_excerpts)
+    """
+    # Create minimal excerpts for documentation files
+    minimal_excerpts = ""
+
+    # Check for common documentation files
+    doc_files = ["README.md", "docs/", "CHANGELOG.md"]
+
+    for doc_path in doc_files:
+        if os.path.exists(doc_path):
+            try:
+                if os.path.isfile(doc_path):
+                    with open(doc_path, "r") as f:
+                        content = f.read()
+                    # Include first 30 lines for context
+                    lines = content.split("\n")[:30]
+                    minimal_excerpts += f"=== {doc_path} ===\n"
+                    minimal_excerpts += "\n".join(lines)
+                    minimal_excerpts += "\n\n"
+                elif os.path.isdir(doc_path):
+                    # For directories, list files
+                    files = os.listdir(doc_path)
+                    minimal_excerpts += f"=== {doc_path}/ ===\n"
+                    minimal_excerpts += f"Files: {', '.join(files[:10])}\n\n"
+            except Exception as e:
+                minimal_excerpts += f"=== {doc_path} ===\n[Error reading: {e}]\n\n"
+
+    full_context = "Documentation updates needed for recent code changes"
+
+    return full_context, minimal_excerpts
+
+
+def plan_docs_updates(context: str) -> Optional[str]:
+    """
+    Use the planner model to create a plan for documentation updates.
 
     Args:
-        event_data: GitHub event payload
-
-    Returns:
-        Tuple of (title, body, diff_summary) or None
-    """
-    try:
-        if event_data.get("action") != "opened":
-            logger.info("PR not opened, skipping")
-            return None
-
-        pr = event_data.get("pull_request", {})
-        title = pr.get("title", "")
-        body = pr.get("body", "")
-
-        # Get diff summary
-        diff_summary = get_diff_summary()
-
-        if not title or not diff_summary:
-            logger.warning("Missing PR title or diff")
-            return None
-
-        logger.info(f"PR: {title}")
-        return title, body, diff_summary
-
-    except Exception as e:
-        logger.error(f"Error extracting PR context: {e}")
-        return None
-
-def get_diff_summary() -> Optional[str]:
-    """
-    Get a summary of changes in the current PR.
-
-    Returns:
-        Diff summary string or None
-    """
-    try:
-        # Get the base branch
-        base_branch = get_base_branch()
-
-        # Get list of changed files
-        result = subprocess.run(
-            ['git', 'di', '--name-status', f'origin/{base_branch}...HEAD'],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        if result.returncode != 0:
-            logger.error(f"Failed to get diff: {result.stderr}")
-            return None
-
-        changed_files = []
-        for line in result.stdout.strip().split('\n'):
-            if line.strip():
-                status, file_path = line.split('\t', 1)
-                changed_files.append(f"{status} {file_path}")
-
-        if not changed_files:
-            logger.info("No files changed")
-            return None
-
-        # Get actual diff content (limited to avoid context overflow)
-        diff_result = subprocess.run(
-            ['git', 'di', '--stat', f'origin/{base_branch}...HEAD'],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-
-        diff_summary = ""
-        if diff_result.returncode == 0:
-            diff_summary = diff_result.stdout
-
-        return "Changed files:\n" + "\n".join(changed_files) + f"\n\nDiff summary:\n{diff_summary}"
-
-    except Exception as e:
-        logger.error(f"Error getting diff summary: {e}")
-        return None
-
-def plan_doc_updates(title: str, body: str, diff_summary: str) -> Optional[str]:
-    """
-    Use the planner model to plan documentation updates.
-
-    Args:
-        title: PR title
-        body: PR body
-        diff_summary: Summary of code changes
+        context: Documentation context
 
     Returns:
         Planning response from the LLM
@@ -144,102 +100,183 @@ def plan_doc_updates(title: str, body: str, diff_summary: str) -> Optional[str]:
     try:
         params = get_default_params("planner")
 
-        context = """PR Title: {title}
-
-PR Description:
-{body}
-
-Code Changes:
-{diff_summary}
-
-Please analyze these changes and propose minimal documentation updates to keep docs in sync."""
-
         messages = [
             {"role": "system", "content": PLANNER_DOCS},
-            {"role": "user", "content": context}
+            {"role": "user", "content": context},
         ]
 
         logger.info("Planning documentation updates with LLM...")
+
         response = chat(
             model=MODEL_PLAN,
             messages=messages,
-            **params
+            temperature=params["temperature"],
+            max_tokens=int(params["max_tokens"]),
         )
 
-        logger.info("Documentation planning completed")
+        if not response or len(response.strip()) == 0:
+            logger.error("LLM planner returned empty response")
+            return None
+
+        logger.info("Documentation planning completed successfully")
         return response
 
     except Exception as e:
         logger.error(f"Error during documentation planning: {e}")
         return None
 
-def generate_doc_patch(plan: str, context: str) -> Optional[str]:
+
+def generate_docs_patch_json(plan: str, excerpts: str) -> Optional[str]:
     """
-    Use the patcher model to generate a documentation patch.
+    Use the patcher model to generate JSON operations for documentation updates.
 
     Args:
         plan: The planning response
-        context: PR context and diff summary
+        excerpts: Minimal file excerpts for the patcher
 
     Returns:
-        Unified diff string or None if ABORT
+        JSON string with operations or None if ABORT
     """
     try:
-        params = get_default_params("patcher")
+        # Create focused context for the patcher
+        patcher_context = f"""Plan: {plan}
+
+{excerpts}
+
+Generate JSON operations to update documentation. Copy exact text from the excerpts above."""
 
         messages = [
             {"role": "system", "content": PATCHER_DOCS},
-            {"role": "user", "content": f"Plan: {plan}\n\nContext: {context}"}
+            {"role": "user", "content": patcher_context},
         ]
 
-        logger.info("Generating documentation patch with LLM...")
+        logger.info("Generating documentation patch JSON with LLM...")
+
+        # Use tighter generation limits for JSON output
         response = chat(
             model=MODEL_PATCH,
             messages=messages,
-            **params
+            temperature=0.1,  # Lower temperature for more precise output
+            max_tokens=600,  # Keep JSON output compact
         )
+
+        # Log the response for debugging
+        logger.info(f"LLM Patcher Response (length: {len(response)}):")
+        logger.info("=" * 50)
+        logger.info(response)
+        logger.info("=" * 50)
 
         if "ABORT" in response.upper():
             logger.info("LLM patcher returned ABORT")
             return None
 
-        logger.info("Documentation patch generation completed")
-        return response
+        # Clean up the response - remove any markdown or prose
+        cleaned_response = response.strip()
+
+        # Try to extract JSON if it's wrapped in markdown
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]  # Remove ```json
+        elif cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]  # Remove ```
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]  # Remove ending ```
+
+        cleaned_response = cleaned_response.strip()
+
+        logger.info("JSON patch generation completed")
+        return cleaned_response
 
     except Exception as e:
-        logger.error(f"Error during patch generation: {e}")
+        logger.error(f"Error during JSON patch generation: {e}")
         return None
 
-def apply_doc_patch(diff_str: str) -> bool:
+
+def apply_and_test_docs_patch_with_engine(
+    json_operations: str, original_context: str, plan: str, max_attempts: int = 3
+) -> Tuple[bool, str]:
     """
-    Apply the documentation patch.
+    Apply documentation patch using the patch engine with feedback loop.
 
     Args:
-        diff_str: The unified diff to apply
+        json_operations: JSON string with find/replace operations
+        original_context: Original documentation context
+        plan: The documentation update plan
+        max_attempts: Maximum number of correction attempts (default: 3)
 
     Returns:
-        True if successful, False otherwise
+        (success, final_diff) tuple
     """
-    try:
-        # Validate the diff
-        is_valid, reason = validate_unified_diff(diff_str, DOCS_ALLOWLIST)
-        if not is_valid:
-            logger.error(f"Invalid diff: {reason}")
-            return False
+    current_json = json_operations
+    patch_engine = create_patch_engine()
 
-        # Apply the diff
-        if not apply_unified_diff(".", diff_str):
-            logger.error("Failed to apply diff")
-            return False
+    for attempt in range(max_attempts):
+        logger.info(f"🔄 Documentation patch attempt {attempt + 1}/{max_attempts}")
 
-        logger.info("Documentation patch applied successfully")
-        return True
+        try:
+            # Use the patch engine to convert JSON to unified diff
+            logger.info("🔧 Converting JSON operations to unified diff...")
+            unified_diff = patch_engine.process_operations(current_json)
 
-    except Exception as e:
-        logger.error(f"Error applying documentation patch: {e}")
-        return False
+            logger.info("✅ Patch engine generated valid unified diff")
+            logger.info(f"📝 Diff length: {len(unified_diff)} characters")
 
-def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
+            # Try to apply the diff
+            if apply_unified_diff(".", unified_diff):
+                logger.info("✅ Documentation patch applied successfully")
+                return True, unified_diff
+            else:
+                feedback = "Patch failed to apply due to git apply error"
+
+        except (ValidationError, NoEffectiveChangeError) as e:
+            logger.warning(f"⚠️ Patch engine validation failed: {e}")
+            feedback = f"Patch engine validation failed: {e}"
+        except Exception as e:
+            logger.error(f"❌ Unexpected error in patch engine: {e}")
+            feedback = f"Patch engine error: {e}"
+
+        # If we're not on the last attempt, try to get the LLM to fix it
+        if attempt < max_attempts - 1:
+            logger.info("🔄 Asking LLM to correct the JSON operations...")
+
+            # Create feedback context
+            feedback_context = f"""
+{original_context}
+
+PATCH ENGINE FEEDBACK (Attempt {attempt + 1}):
+Your previous JSON operations failed: {feedback}
+
+Please generate corrected JSON operations that address these issues.
+Make sure to:
+1. Only reference allowed file paths
+2. Use exact text from the provided excerpts
+3. Generate valid JSON format
+4. Stay within size limits (max 5 ops, max 200 lines)
+
+PREVIOUS FAILED JSON:
+{current_json}
+"""
+
+            # Get corrected JSON from LLM
+            corrected_json = generate_docs_patch_json(
+                f"CORRECTION NEEDED: {feedback}", feedback_context
+            )
+
+            if corrected_json:
+                current_json = corrected_json
+                logger.info("🔄 LLM generated corrected JSON, retrying...")
+                continue
+            else:
+                logger.error("❌ LLM failed to generate corrected JSON")
+                break
+        else:
+            logger.error(f"❌ Max attempts ({max_attempts}) reached, giving up")
+            logger.error(f"Final failure reason: {feedback}")
+            break
+
+    return False, ""
+
+
+def create_docs_update_pr(plan: str, diff_summary: str) -> Optional[int]:
     """
     Create a pull request for the documentation updates.
 
@@ -255,16 +292,16 @@ def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
         base_branch = get_base_branch()
 
         # Create branch
-        branch_name = create_branch("ai-doc-updates", sentry_type="docsentry")
+        branch_name = create_branch("ai-docs-updates", sentry_type="docsentry")
 
         # Commit changes
-        commit_message = f"DocSentry: docs for {short_sha}\n\n{plan}"
+        commit_message = f"DocSentry: update documentation for {short_sha}\n\n{plan}"
         if not commit_all(commit_message):
             raise RuntimeError("Failed to commit changes")
 
         # Create PR
-        title = f"DocSentry: docs for {short_sha}"
-        body = """## Documentation Updates
+        title = f"DocSentry: update documentation for {short_sha}"
+        body = f"""## Documentation Updates
 
 **Plan:**
 {plan}
@@ -272,7 +309,7 @@ def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
 **Changes:**
 {diff_summary}
 
-**Generated by:** DocSentry AI
+**Generated by:** DocSentry AI (Patch Engine v2)
 **Branch:** {branch_name}
 """
 
@@ -287,36 +324,22 @@ def create_doc_update_pr(plan: str, diff_summary: str) -> Optional[int]:
         logger.error(f"Error creating documentation update PR: {e}")
         return None
 
-def label_feature_pr(pr_number: int, success: bool = True) -> None:
-    """
-    Label the feature PR that triggered this action.
 
-    Args:
-        pr_number: PR number to label
-        success: Whether the documentation updates were successful
-    """
-    try:
-        label = "docs-sentry:done" if success else "docs-sentry:noop"
-        if label_pull_request(pr_number, [label]):
-            logger.info(f"Labeled feature PR with: {label}")
-        else:
-            logger.warning(f"Failed to label feature PR with: {label}")
-    except Exception as e:
-        logger.error(f"Error labeling feature PR: {e}")
-
-def show_sentries_banner():
+def show_sentries_banner() -> None:
     """Display the Sentry ASCII art banner."""
     from sentries.banner import show_sentry_banner
+
     show_sentry_banner()
-    print("📚 DocSentry - AI-Powered Documentation Updates")
-    print("=" * 50)
+    print("📚 DocSentry v2 - AI-Powered Documentation Updates (Patch Engine)")
+    print("=" * 65)
     print()
+
 
 def main() -> None:
     """Main entry point for DocSentry."""
     show_sentries_banner()
     setup_logging()
-    logger.info("DocSentry starting...")
+    logger.info("DocSentry v2 starting with Patch Engine...")
 
     # Validate environment
     if not validate_environment():
@@ -326,50 +349,38 @@ def main() -> None:
     if not os.path.exists(".git"):
         exit_failure("Not in a git repository")
 
-    # Read GitHub event
-    event_data = read_github_event()
-    if not event_data:
-        exit_noop("No GitHub event data available")
-
-    # Get PR context
-    pr_context = get_pr_context(event_data)
-    if not pr_context:
-        exit_noop("No PR context available")
-
-    title, body, diff_summary = pr_context
+    # Get documentation context with minimal excerpts for the patcher
+    context, excerpts = get_docs_context_with_excerpts()
 
     # Plan documentation updates
-    plan = plan_doc_updates(title, body, diff_summary)
+    plan = plan_docs_updates(context)
     if not plan:
-        exit_noop("Could not plan documentation updates")
+        exit_noop("No documentation updates needed")
 
-    # Generate documentation patch
-    context = f"PR: {title}\n\n{body}\n\nChanges:\n{diff_summary}"
-    diff_str = generate_doc_patch(plan, context)
+    # Generate documentation patch JSON with feedback loop
+    diff_str = generate_docs_patch_json(plan, excerpts)
     if not diff_str:
-        exit_noop("Could not generate documentation patch")
+        exit_noop("Could not generate documentation patch JSON")
 
-    # Apply the patch
-    if not apply_doc_patch(diff_str):
-        exit_noop("Failed to apply documentation patch")
+    # Apply and test with patch engine (max 3 attempts)
+    logger.info("🔄 Starting documentation patch application with Patch Engine...")
+    success, final_diff = apply_and_test_docs_patch_with_engine(
+        diff_str, context, plan, max_attempts=3
+    )
 
-    # Create PR
-    diff_summary = extract_diff_summary(diff_str)
-    pr_number = create_doc_update_pr(plan, diff_summary)
+    if not success:
+        exit_noop("Documentation patch application failed after 3 attempts")
+
+    # Create PR only if we have a working patch
+    diff_summary = extract_diff_summary(final_diff)
+    pr_number = create_docs_update_pr(plan, diff_summary)
 
     if pr_number:
-        # Try to label the feature PR if we can determine its number
-        try:
-            # Extract PR number from event data
-            feature_pr_number = event_data.get("pull_request", {}).get("number")
-            if feature_pr_number:
-                label_feature_pr(feature_pr_number, True)
-        except Exception as e:
-            logger.warning(f"Could not label feature PR: {e}")
-
+        logger.info("Documentation updates completed successfully")
         exit_success(f"Created PR #{pr_number} for documentation updates")
     else:
         exit_failure("Failed to create PR for documentation updates")
+
 
 if __name__ == "__main__":
     main()
