@@ -30,7 +30,7 @@ def test_allowlists_are_lists() -> None:
 
     # Check that allowlists contain expected patterns
     assert "tests/" in rc.TESTS_ALLOWLIST
-    assert "sentries/test_" in rc.TESTS_ALLOWLIST
+    assert "sentries/test_*.py" in rc.TESTS_ALLOWLIST
 
 
 def test_cli_scripts_exist() -> None:

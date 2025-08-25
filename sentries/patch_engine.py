@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Allowed paths for modifications (tests only for TestSentry)
 ALLOWED_PATHS = {
     "tests/",
-    "sentries/test_",
+    "sentries/test_*.py",
 }
 
 # Guardrails
