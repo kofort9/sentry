@@ -191,7 +191,9 @@ class PatchEngine:
                 raise ValidationError(f"Find text not found in {file_path}: {repr(op.find[:100])}")
             elif find_count > 1:
                 raise ValidationError(
-                    f"Find text appears {find_count} times in {file_path}, must be unique: {repr(op.find[:100])}"
+                    f"""Find text appears {find_count} times in {file_path}, must be unique:
+                    {repr(op.find[:100])}
+                    """
                 )
 
             # Apply the replacement (safe since we know it's unique)
