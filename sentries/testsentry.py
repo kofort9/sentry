@@ -182,8 +182,12 @@ def get_test_context_with_excerpts(test_output: str) -> str:
             with open(test_file, "r") as f:
                 file_content = f.read()
 
-            context_parts.append(f"\n=== Source Code: {test_file} ===")
+            context_parts.append("\n" + "=" * 60)
+            context_parts.append(f"Source Code: {test_file}")
+            context_parts.append("(Copy text EXACTLY from this section, including whitespace)")
+            context_parts.append("=" * 60)
             context_parts.append(file_content)
+            context_parts.append("=" * 60)
 
         except Exception as e:
             logger.warning(f"⚠️ Could not read {test_file}: {e}")
@@ -210,13 +214,14 @@ def generate_test_patch_json(plan: str, context: str) -> Optional[str]:
     # First attempt with full context
     patcher_prompt = f"""Plan: {plan}
 
-IMPORTANT: Look for the source code sections below (marked with "=== Source Code: ===").
-You must copy the exact text from the actual source code, NOT from pytest error messages.
+CRITICAL INSTRUCTION: Copy text ONLY from the "=== Source Code:" sections below.
+DO NOT copy from pytest error messages or failure summaries.
+Pay extreme attention to whitespace - spaces, tabs, and newlines must match exactly.
 
 {context}
 
 Generate JSON operations to fix the failing tests.
-Copy exact text from the source code sections above."""
+COPY EXACT TEXT (including all whitespace) from the source code sections above."""
 
     patcher_response = chat(
         model=str(MODEL_PATCH),

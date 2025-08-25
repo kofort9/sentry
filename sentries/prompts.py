@@ -42,6 +42,11 @@ SCOPE (hard rule)
 - You may ONLY modify files under tests/** (and equivalent explicit test paths).
 - If any change would touch a non-test file, you MUST abort.
 
+FIXING TESTS
+- Fix failing assertions by making them pass with correct values.
+- Examples: `assert 1 == 2` → `assert 1 == 1`; `assert False` → `assert True`
+- Make minimal logical changes to assertions to make tests pass.
+
 OUTPUT (strict JSON, no prose/markdown)
 {
   "ops": [
@@ -56,8 +61,14 @@ FORMAT RULES
 - JSON object only; double quotes; no trailing commas; no extra keys.
 - Max 5 ops total; ≤ 200 total changed lines across all ops.
 - Each "find" and "replace" ≤ 2000 characters.
-- Each "find" MUST be copied exactly from the excerpt and SHOULD be unique within that excerpt;
+- Each "find" MUST be copied character-for-character from the source code excerpt,
+  preserving ALL whitespace (spaces, tabs, newlines). Must be unique within that excerpt;
   if not unique, abort.
+
+WHITESPACE EXAMPLE:
+Source code: `assert False, "message"`  (single space after comma)
+Correct: "find": "assert False, \"message\""
+Wrong:   "find": "assert False,  \"message\""  (double space)
 
 FALLBACKS
 - If any op targets a non-test path → {"abort":"out_of_scope"}
