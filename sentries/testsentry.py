@@ -18,9 +18,9 @@ from typing import Optional
 
 from .chat import chat, get_default_params
 from .diff_utils import apply_unified_diff
-from .intelligent_analysis import FailureType, create_smart_context
+from .intelligent_analysis import create_smart_context
 from .patch_engine import create_patch_engine
-from .prompts import PATCHER_TESTS, PLANNER_TESTS
+from .prompts import PATCHER_TESTS
 from .runner_common import (
     MODEL_PATCH,
     MODEL_PLAN,
@@ -149,14 +149,16 @@ def get_smart_context_packs(test_output: str) -> list:
         List of ContextPack objects with targeted context for each failure
     """
     logger.info("🧠 Creating smart context packs with failure classification...")
-    
+
     context_packs = create_smart_context(test_output)
-    
+
     logger.info(f"📦 Generated {len(context_packs)} smart context packs")
     for pack in context_packs:
-        logger.info(f"  - {pack.failure_info.test_function}: {pack.failure_info.failure_type.value} "
-                   f"({pack.context_size} chars)")
-    
+        logger.info(
+            f"  - {pack.failure_info.test_function}: {pack.failure_info.failure_type.value} "
+            f"({pack.context_size} chars)"
+        )
+
     return context_packs
 
 
@@ -172,22 +174,23 @@ def generate_smart_patch_json(context_pack, plan: str) -> Optional[str]:
         Generated patch string or None if failed
     """
     logger.info(f"🔧 Generating smart patch for {context_pack.failure_info.failure_type.value}...")
-    
+
     # Get failure-type-specific patcher prompt
-    patcher_prompt_template = SmartPrompts.get_patcher_prompt(context_pack.failure_info.failure_type)
-    
-    # Format context with failure-type-specific guidance
-    formatted_context = SmartPrompts.format_context_for_failure(
-        context_pack.context_parts, 
+    patcher_prompt_template = SmartPrompts.get_patcher_prompt(
         context_pack.failure_info.failure_type
     )
-    
+
+    # Format context with failure-type-specific guidance
+    formatted_context = SmartPrompts.format_context_for_failure(
+        context_pack.context_parts, context_pack.failure_info.failure_type
+    )
+
     # Add find candidates if available
     if context_pack.find_candidates:
         formatted_context += "\n\n=== Suggested Find Candidates (AST-normalized) ==="
         for candidate in context_pack.find_candidates:
             formatted_context += f"\n- {candidate}"
-    
+
     patcher_prompt = f"""Plan: {plan}
 
 CRITICAL INSTRUCTION: Copy text ONLY from the source code sections below.
@@ -209,8 +212,11 @@ COPY EXACT TEXT (including all whitespace) from the source code sections above."
         max_tokens=int(get_default_params("patcher")["max_tokens"]),
     )
 
-    logger.info(f"🔧 Smart Patcher Response ({context_pack.failure_info.failure_type.value}):\n{patcher_response}")
-    
+    logger.info(
+        f"🔧 Smart Patcher Response "
+        f"({context_pack.failure_info.failure_type.value}):\n{patcher_response}"
+    )
+
     # Try to process the response (same validation as before)
     try:
         # Try to parse as JSON first
@@ -286,7 +292,8 @@ If you cannot create valid JSON operations, reply: {{"abort": "cannot comply wit
                 logger.warning(f"⚠️ Smart patcher retry aborted: {abort_reason}")
                 return None
             else:
-                logger.warning(f"⚠️ Smart patcher retry aborted with invalid reason: {abort_reason}")
+                reason_msg = f"⚠️ Smart patcher retry aborted with invalid reason: {abort_reason}"
+                logger.warning(reason_msg)
             return None
 
         # Check for valid operations
@@ -429,7 +436,7 @@ If you cannot create valid JSON operations, reply: {{"abort": "cannot comply wit
         logger.warning("⚠️ Patcher retry response is not valid JSON")
 
     logger.error("❌ Failed to generate valid JSON operations after retry")
-        return None
+    return None
 
 
 def apply_and_test_patch_with_engine(diff_str: str, test_file_path: str) -> tuple[bool, str]:
@@ -538,22 +545,24 @@ def main() -> None:
 
     # Process each failure type separately for optimal results
     successful_fixes = 0
-    
+
     for i, context_pack in enumerate(context_packs, 1):
         failure_info = context_pack.failure_info
-        logger.info(f"🎯 Processing failure {i}/{len(context_packs)}: "
-                   f"{failure_info.test_function} ({failure_info.failure_type.value})")
-        
+        logger.info(
+            f"🎯 Processing failure {i}/{len(context_packs)}: "
+            f"{failure_info.test_function} ({failure_info.failure_type.value})"
+        )
+
         # Get failure-type-specific planner prompt
         planner_prompt_template = SmartPrompts.get_planner_prompt(failure_info.failure_type)
-        
+
         # Format context for this specific failure
         formatted_context = SmartPrompts.format_context_for_failure(
-            context_pack.context_parts, 
-            failure_info.failure_type
+            context_pack.context_parts, failure_info.failure_type
         )
-        
-        planner_prompt = f"""Analyze this {failure_info.failure_type.value} failure and plan minimal fixes:
+
+        failure_type = failure_info.failure_type.value
+        planner_prompt = f"""Analyze this {failure_type} failure and plan minimal fixes:
 
 {formatted_context}
 
@@ -576,12 +585,16 @@ If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
             max_tokens=int(get_default_params("planner")["max_tokens"]),
         )
 
-        logger.info(f"🧠 Smart Planner Response ({failure_info.failure_type.value}):\n{planner_response}")
+        logger.info(
+            f"🧠 Smart Planner Response ({failure_info.failure_type.value}):\n{planner_response}"
+        )
 
         # Validate planner scope
         is_valid, reason = validate_planner_scope(planner_response)
         if not is_valid:
-            logger.warning(f"⚠️ Planner scope validation failed for {failure_info.test_function}: {reason}")
+            logger.warning(
+                f"⚠️ Planner scope validation failed for {failure_info.test_function}: {reason}"
+            )
             continue  # Skip this failure, try next one
 
         # Extract plan from valid response
@@ -601,9 +614,11 @@ If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
         # Apply patch using patch engine
         logger.info(f"🔨 Applying smart patch for {failure_info.test_function}...")
         success, feedback = apply_and_test_patch_with_engine(patch_json, failure_info.test_file)
-        
+
         if success:
-            logger.info(f"✅ Smart fix applied successfully for {failure_info.test_function}: {feedback}")
+            logger.info(
+                f"✅ Smart fix applied successfully for {failure_info.test_function}: {feedback}"
+            )
             successful_fixes += 1
             # For now, process one fix at a time to avoid conflicts
             break
@@ -617,7 +632,9 @@ If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
 
     logger.info("✅ Smart fixes applied successfully!")
     success = True
-    feedback = f"Smart TestSentry successfully fixed {successful_fixes}/{len(context_packs)} failures"
+    feedback = (
+        f"Smart TestSentry successfully fixed {successful_fixes}/{len(context_packs)} failures"
+    )
 
     if success:
         logger.info("🎉 Patch applied and verified successfully!")
@@ -643,12 +660,17 @@ If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
                 test_file_path = test_files[0]
             else:
                 test_file_path = "tests/"
-        except:
+        except Exception:
             test_file_path = "tests/"
-        
+
         subprocess.run(["git", "add", test_file_path], cwd=".")
         subprocess.run(
-            ["git", "commit", "-m", f"fix: {plan}\n\nApplied by TestSentry using Smart Analysis + Patch Engine v3"],
+            [
+                "git",
+                "commit",
+                "-m",
+                f"fix: {plan}\n\nApplied by TestSentry using Smart Analysis + Patch Engine v3",
+            ],
             cwd=".",
         )
 
