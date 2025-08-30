@@ -1,4 +1,4 @@
-# Sentry
+# Sentries
 
 ```
 ╔────────────────────────────────────────────╗
@@ -6,18 +6,34 @@
 │ /   _____/ ____   _____/  |________ ___.__.│
 │ \_____  \_/ __ \ /    \   __\_  __ <   |  |│
 │ /        \  ___/|   |  \  |  |  | \/\___  |│
-│/_______  /\___  >___|  /__|  |__|   / ____|│
+│/_______  /\___  >___|  /__|  |__|   / ____││
 │        \/     \/     \/             \/     │
 ╚────────────────────────────────────────────╝
 ```
 
-**Automated test and documentation maintenance via local LLMs.**
+**⚠️ PROJECT STATUS: POC COMPLETE - TABLED ⚠️**
 
-Sentry provides two CLIs that automatically keep your repository healthy:
-- **TestSentry**: Keeps `tests/**` green by proposing test-only patches
-- **DocSentry**: Keeps docs in sync by proposing docs-only patches
+This project has been **tabled** due to resource limitations. It serves as a **proof-of-concept** demonstrating the technical feasibility of using local LLMs for automated test maintenance.
 
-## 🚀 Quick Start
+**Current Status**: 
+- ✅ **TestSentry**: Basic functionality works for simple test failures
+- ❌ **DocSentry**: Never fully implemented
+- 🟡 **Overall**: POC complete, not suitable for production use
+
+**Why Tabled**: Resource limitations and complexity constraints make further development not worth pursuing at this time.
+
+---
+
+## 🎯 What This POC Demonstrated
+
+**Automated test maintenance via local LLMs** - Successfully proved that:
+
+1. **Local LLMs can fix simple test failures** (assertion mismatches, basic imports)
+2. **Patch engine approach works** (JSON find/replace → unified diffs)
+3. **Git integration is solid** (automated PR creation and branch management)
+4. **Safety guardrails are effective** (path restrictions, size limits, validation)
+
+## 🚀 Quick Start (For POC Evaluation)
 
 ### Prerequisites
 
@@ -28,18 +44,6 @@ Sentry provides two CLIs that automatically keep your repository healthy:
 
 ### Installation
 
-#### **Option 1: Automated Setup (Recommended)**
-```bash
-# Clone and install
-git clone <your-repo>
-cd sentries
-pip install -e .
-
-# Run automated setup
-sentries-setup
-```
-
-#### **Option 2: Manual Setup**
 ```bash
 # Clone and install
 git clone <your-repo>
@@ -51,42 +55,39 @@ export LLM_BASE=http://127.0.0.1:11434
 export MODEL_PLAN=llama3.1:8b-instruct-q4_K_M
 export MODEL_PATCH=deepseek-coder:6.7b-instruct-q5_K_M
 
-# Test connectivity
-python scripts/smoke.py
+# Test basic functionality
+testsentry --help
 ```
 
-### Usage
+### What Works (Simple Cases)
 
 ```bash
-# Fix failing tests
+# Fix basic failing tests (simple assertions, basic imports)
 testsentry
 
-# Update documentation for PR changes
-docsentry
-
-# Check status of sentries artifacts
+# Check status
 sentries-status
 
-# Clean up sentries artifacts
-sentries-cleanup --dry-run  # See what would be cleaned up
-sentries-cleanup --force    # Clean up everything
-sentries-cleanup --max-age-days 7  # Clean up artifacts older than 7 days
-
-# Setup and management
-sentries-setup              # Automated setup and model installation
-sentries-update-models      # Check for and install better models
-sentries-update-models --info-only  # Show model information
+# Clean up artifacts
+sentries-cleanup --dry-run
 ```
 
-## 🏗️ Architecture
+### What Doesn't Work
+
+- ❌ **DocSentry**: Never implemented
+- ❌ **Complex test failures**: Fixtures, complex dependencies, type issues
+- ❌ **Advanced scenarios**: Multi-file dependencies, integration problems
+
+## 🏗️ Architecture (POC Implementation)
 
 ### Core Components
 
-- **`sentries/chat.py`**: LLM communication layer (Ollama + OpenAI-style APIs)
-- **`sentries/prompts.py`**: System prompts for planner and patcher models
-- **`sentries/diff_utils.py`**: Diff validation and application with strict allowlists
-- **`sentries/git_utils.py`**: Git operations, branch management, and PR creation
-- **`sentries/runner_common.py`**: Shared utilities and environment management
+- **`sentries/patch_engine.py`**: ✅ **Working** - Converts JSON operations to unified diffs
+- **`sentries/intelligent_analysis.py`**: ✅ **Working** - Test failure classification
+- **`sentries/git_utils.py`**: ✅ **Working** - Git operations and PR management
+- **`sentries/testsentry.py`**: 🟡 **Partially Working** - Basic test fixes only
+- **`sentries/docsentry.py`**: ❌ **Not Working** - Never implemented
+- **`sentries/chat.py`**: ✅ **Working** - LLM communication layer
 
 ### Two-Model Approach
 
@@ -95,8 +96,8 @@ sentries-update-models --info-only  # Show model information
 
 ### Safety Features
 
-- **Path Allowlists**: Only modify files under allowed paths
-- **Size Limits**: Enforce caps on files changed and lines modified
+- **Path Allowlists**: Only modify files under allowed paths (`tests/`)
+- **Size Limits**: Enforce caps on files changed (≤5) and lines modified (≤200)
 - **Diff Validation**: Verify unified diff format and content
 - **Re-testing**: Verify fixes work before creating PRs
 
@@ -119,137 +120,61 @@ sentries-update-models --info-only  # Show model information
 #### **Planner Models (Analysis & Planning)**
 | Model | Size | Quality | Speed | Use Case |
 |-------|------|---------|-------|----------|
-| `llama3.1:8b-instruct-q8_0` | 8.5GB | 🥇 Highest | 🐌 Slow | Best reasoning, complex analysis |
 | `llama3.1:8b-instruct-q4_K_M` | 4.7GB | 🥈 High | 🚀 Fast | **Recommended** - balanced performance |
+| `llama3.1:8b-instruct-q8_0` | 8.5GB | 🥇 Highest | 🐌 Slow | Best reasoning, complex analysis |
 | `llama3.1:8b-instruct-q2_K` | 2.9GB | 🥉 Medium | ⚡ Fastest | Quick planning, limited reasoning |
-| `mistral:7b-instruct-v0.2-q4_K_M` | 4.1GB | 🥈 High | 🚀 Fast | Alternative planning model |
 
 #### **Patcher Models (Code Generation)**
 | Model | Size | Quality | Speed | Use Case |
 |-------|------|---------|-------|----------|
-| `deepseek-coder:6.7b-instruct-q8_0` | 6.7GB | 🥇 Highest | 🐌 Slow | Best code quality, complex patches |
 | `deepseek-coder:6.7b-instruct-q5_K_M` | 4.2GB | 🥈 High | 🚀 Fast | **Recommended** - balanced performance |
+| `deepseek-coder:6.7b-instruct-q8_0` | 6.7GB | 🥇 Highest | 🐌 Slow | Best code quality, complex patches |
 | `deepseek-coder:6.7b-instruct-q2_K` | 2.7GB | 🥉 Medium | ⚡ Fastest | Quick patches, limited quality |
-| `codellama:7b-instruct-q4_K_M` | 4.1GB | 🥈 High | 🚀 Fast | Alternative code generation |
 
 ### **Storage Requirements**
 
-#### **Minimum Setup**
-- **Total Size**: ~9GB (planner + patcher)
+- **Minimum Setup**: ~9GB (planner + patcher)
 - **Recommended Free Space**: 15GB+ (models + safety margin)
 - **Model Storage**: `~/.ollama/models/` directory
 
-#### **High-Quality Setup**
-- **Total Size**: ~15GB (highest quality models)
-- **Recommended Free Space**: 25GB+ (models + safety margin)
+## 📋 TestSentry (POC Status: Partially Working)
 
-### **Performance Characteristics**
-
-#### **Quantization Quality**
-- **q8_0**: Highest quality, largest size, slowest inference
-- **q5_K_M**: High quality, medium size, fast inference
-- **q4_K_M**: Good quality, smaller size, fast inference
-- **q2_K**: Lower quality, smallest size, fastest inference
-
-#### **Memory Requirements**
-- **8GB RAM**: Minimum for basic models
-- **16GB RAM**: Recommended for high-quality models
-- **32GB RAM**: Optimal for multiple models + system
-
-### **Model Management**
-
-#### **Installation**
-```bash
-# Install recommended models
-sentries-setup
-
-# Install specific models
-ollama pull llama3.1:8b-instruct-q8_0
-ollama pull deepseek-coder:6.7b-instruct-q8_0
-```
-
-#### **Updates & Upgrades**
-```bash
-# Check for better models
-sentries-update-models
-
-# Show model information only
-sentries-update-models --info-only
-
-# Manual model updates
-ollama pull <model-name>
-```
-
-#### **Model Switching**
-```bash
-# Update environment variables
-export MODEL_PLAN=llama3.1:8b-instruct-q8_0
-export MODEL_PATCH=deepseek-coder:6.7b-instruct-q8_0
-
-# Or edit .env file
-MODEL_PLAN=llama3.1:8b-instruct-q8_0
-MODEL_PATCH=deepseek-coder:6.7b-instruct-q8_0
-```
-
-### **Testing & Validation**
-
-#### **Tested Models**
-- ✅ `llama3.1:8b-instruct-q4_K_M` (4.7GB) - **Primary Testing**
-- ✅ `deepseek-coder:6.7b-instruct-q5_K_M` (4.2GB) - **Primary Testing**
-- ✅ `llama3.1:8b-instruct-q8_0` (8.5GB) - **Performance Testing**
-- ✅ `deepseek-coder:6.7b-instruct-q8_0` (6.7GB) - **Performance Testing**
-
-#### **Performance Benchmarks**
-| Model Configuration | Test Fix Success Rate | Doc Update Success Rate | Avg Response Time |
-|-------------------|---------------------|------------------------|------------------|
-| q4_K_M + q5_K_M | 87% | 92% | 15s |
-| q8_0 + q8_0 | 94% | 96% | 28s |
-| q2_K + q2_K | 72% | 78% | 8s |
-
-### **Model Selection Guide**
-
-#### **For Development/Testing**
-- Use `q4_K_M` models for balanced performance
-- Fast iteration, good quality, reasonable storage
-
-#### **For Production**
-- Use `q8_0` models for highest quality
-- Best reasoning and code generation
-- Requires more storage and memory
-
-#### **For Resource-Constrained Systems**
-- Use `q2_K` models for minimal footprint
-- Acceptable quality with fast inference
-- Good for CI/CD with limited resources
-
-## 📋 TestSentry
-
-Automatically fixes failing tests by:
+**Capabilities**: Automatically fixes **simple** failing tests by:
 1. Running `pytest` to discover failures
 2. Planning minimal test-only changes
 3. Generating and applying patches
 4. Re-testing to verify fixes
 5. Creating PRs with test fixes
 
-**Allowlist**: `tests/`
+**What Works**:
+- ✅ Simple assertion failures (`assert 1 == 2` → `assert 1 == 1`)
+- ✅ Basic import issues
+- ✅ Test file modifications in `tests/` directory
+
+**What Doesn't Work**:
+- ❌ Complex test failures (fixtures, dependencies)
+- ❌ Integration problems
+- ❌ Advanced pytest scenarios
+
+**Allowlist**: `tests/`  
 **Limits**: ≤5 files, ≤200 lines changed
 
-## 📚 DocSentry
+## 📚 DocSentry (POC Status: Not Implemented)
 
-Keeps documentation synchronized by:
+**Status**: ❌ **Never implemented or tested**
+
+**Intended Purpose**: Keep documentation synchronized by:
 1. Analyzing PR changes and metadata
 2. Planning minimal documentation updates
 3. Generating documentation patches
 4. Creating PRs with doc updates
 
-**Allowlist**: `README.md`, `docs/`, `CHANGELOG.md`, `ARCHITECTURE.md`, `ADR/`, `openapi.yaml`
-**Limits**: ≤5 files, ≤300 lines changed
+**Reality**: Basic structure exists but no working functionality.
 
 ## 🔒 Security & Guardrails
 
 ### Path Restrictions
 - TestSentry: Only modifies files under `tests/`
-- DocSentry: Only modifies documentation files
 - Hard-coded allowlists prevent unauthorized changes
 
 ### Size Limits
@@ -263,74 +188,11 @@ Keeps documentation synchronized by:
 - Size limit checking
 - Re-testing after patch application
 
-## 🚀 Setup & Installation
-
-### **Automated Setup (Recommended)**
-
-The easiest way to get started with Sentry:
-
-```bash
-# 1. Clone and install
-git clone <your-repo>
-cd sentries
-pip install -e .
-
-# 2. Run automated setup
-sentries-setup
-```
-
-The setup script will:
-- ✅ Check system requirements (Python, disk space, memory)
-- ✅ Verify Ollama installation
-- ✅ Start Ollama service if needed
-- ✅ Install recommended LLM models
-- ✅ Create configuration files (.env, .env.example)
-- ✅ Test the complete installation
-- ✅ Provide next steps and tips
-
-### **Manual Setup**
-
-If you prefer manual configuration:
-
-```bash
-# 1. Install Ollama
-# Visit: https://ollama.ai/download
-
-# 2. Install models
-ollama pull llama3.1:8b-instruct-q4_K_M
-ollama pull deepseek-coder:6.7b-instruct-q5_K_M
-
-# 3. Configure environment
-export LLM_BASE=http://127.0.0.1:11434
-export MODEL_PLAN=llama3.1:8b-instruct-q4_K_M
-export MODEL_PATCH=deepseek-coder:6.7b-instruct-q5_K_M
-
-# 4. Test installation
-python scripts/smoke.py
-```
-
-### **System Requirements**
-
-#### **Hardware**
-- **CPU**: x86_64 or ARM64 (Apple Silicon)
-- **RAM**: 8GB minimum, 16GB+ recommended
-- **Storage**: 15GB+ free space for models
-- **Network**: Internet access for model downloads
-
-#### **Software**
-- **OS**: macOS 12+ or Linux (Ubuntu 20.04+)
-- **Python**: 3.10+ (3.11+ recommended)
-- **Git**: Latest version
-- **Ollama**: Latest version
-
-#### **GitHub Integration**
-- **Token**: Personal access token with repo permissions
-- **Repository**: Access to target repositories
-- **Actions**: GitHub Actions enabled (for workflows)
-
 ## 🚀 GitHub Actions Integration
 
 ### Self-Hosted Runner Setup
+
+**Required**: Self-hosted runners for LLM operations (models cannot run on GitHub-hosted runners)
 
 1. **Install Ollama on Runner**
    ```bash
@@ -352,26 +214,18 @@ python scripts/smoke.py
    - `MODEL_PLAN`: Planner model name (optional)
    - `MODEL_PATCH`: Patcher model name (optional)
 
-4. **Add Workflow Files**
-   - Copy `examples/workflows/*.yml` to `.github/workflows/`
-   - Customize for your repository needs
-
 ### Workflow Files
 
-- `examples/workflows/test-sentry.yml`: TestSentry automation
-- `examples/workflows/doc-sentry.yml`: DocSentry automation
-
-### Concurrency Control
-
-```yaml
-concurrency:
-  group: sentry-${{ github.ref }}
-  cancel-in-progress: false
-```
-
-Prevents multiple Sentries from running simultaneously on the same branch.
+- `.github/workflows/test-sentries.yml`: Comprehensive CI/CD workflow
+- Includes linting, testing, and LLM operations
 
 ## 🧪 Testing
+
+### Current Test Status
+- **Total Tests**: 28
+- **Passing**: 26
+- **Failing**: 2 (intentional failures for testing)
+- **Coverage**: 18% (low due to untested modules)
 
 ### Smoke Test
 
@@ -384,17 +238,6 @@ Verifies:
 - Model availability
 - Basic model response capability
 
-### Local Testing
-
-```bash
-# Test in a repository with failing tests
-cd /path/to/repo
-testsentry
-
-# Test with a PR open
-docsentry
-```
-
 ## 📊 Output & Labeling
 
 ### Exit Codes
@@ -404,8 +247,6 @@ docsentry
 ### PR Labels
 - `tests-sentry:done`: Test fixes completed successfully
 - `tests-sentry:noop`: No test fixes needed
-- `docs-sentry:done`: Documentation updates completed
-- `docs-sentry:noop`: No documentation updates needed
 
 ## 🛠️ Development
 
@@ -414,7 +255,8 @@ docsentry
 ```
 sentries/
 ├── pyproject.toml              # Dependencies and console scripts
-├── README.md                   # Comprehensive documentation
+├── README.md                   # This documentation
+├── PROJECT_STATUS_AUDIT.md     # Detailed project status
 ├── .gitignore                  # Python and project-specific ignores
 ├── sentries/                   # Core package
 │   ├── __init__.py            # Package initialization
@@ -425,73 +267,46 @@ sentries/
 │   ├── git_utils.py           # Git operations and PR management
 │   ├── runner_common.py       # Shared utilities and constants
 │   ├── testsentry.py          # TestSentry CLI (test fixes)
-│   ├── docsentry.py           # DocSentry CLI (doc updates)
-│   ├── cleanup.py             # Artifact cleanup utility
-│   ├── status.py              # Status reporting utility
-│   ├── setup_cli.py           # Setup wrapper script
-│   └── update_models_cli.py   # Model management wrapper
+│   ├── docsentry.py           # DocSentry CLI (doc updates) - NOT WORKING
+│   ├── intelligent_analysis.py # Smart test failure analysis
+│   ├── patch_engine.py        # Patch generation engine
+│   └── smart_prompts.py       # Experimental prompts - NOT INTEGRATED
 ├── scripts/                    # Standalone utilities
 │   ├── setup_sentries.py      # Automated setup and configuration
 │   ├── update_models.py       # LLM model management
 │   └── smoke.py               # Health check and connectivity test
-└── examples/workflows/         # GitHub Actions integration
-    ├── test-sentry.yml        # TestSentry automation workflow
-    └── doc-sentry.yml         # DocSentry automation workflow
+└── .github/workflows/          # GitHub Actions integration
+    └── test-sentries.yml      # Comprehensive CI/CD workflow
 ```
 
-### Adding New Features
+## 🏷️ Artifact Tagging & Cleanup
 
-#### **Core Sentry Types**
-1. **New Sentry Type**: Create new CLI module following existing pattern (see `testsentry.py`/`docsentry.py`)
-   - Inherit from common patterns in `runner_common.py`
-   - Add to `sentries/__init__.py` exports
-   - Follow the planner → patcher → validation → git workflow
+### **Automatic Tagging**
+The sentries automatically tag all created artifacts for easy identification:
 
-#### **Configuration & Security**
-2. **New Allowlists**: Update constants in `runner_common.py` (see `TESTS_ALLOWLIST`, `DOCS_ALLOWLIST`)
-   - Define allowed file paths and extensions
-   - Set appropriate size limits for your use case
-   - Consider security implications of new paths
+#### **Branch Tagging**
+- **Naming Convention**: `ai-test-fixes/<sha>-<timestamp>`
+- **Metadata Files**: Each branch contains `.sentries-metadata.json` with creation details
 
-#### **LLM Integration**
-3. **New Models**: Add to environment variables and update prompts in `prompts.py`
-   - Create system prompts following existing format
-   - Test with `scripts/smoke.py` before deployment
-   - Document model requirements and performance characteristics
+#### **PR Tagging**
+- **Labels**: Automatic labels like `ai-generated`, `sentries`, `sentry-testsentry`
+- **Metadata**: PR descriptions include sentries metadata section
 
-#### **CI/CD Integration**
-4. **New Workflows**: Create workflow file in `examples/workflows/` following existing patterns
-   - Use concurrency controls to prevent conflicts
-   - Include Ollama health checks
-   - Set appropriate triggers and conditions
+### **Cleanup Utilities**
 
-#### **Utilities & Scripts**
-5. **New Utilities**: Add CLI scripts following the pattern in `scripts/` directory
-   - Use the `sentries.banner.show_sentry_banner()` for consistency
-   - Follow the class-based structure for complex operations
-   - Include proper error handling and logging
+```bash
+# Show all sentries artifacts
+sentries-status
 
-6. **New Console Scripts**: Update `pyproject.toml` with new entry points
-   - Add to `[project.scripts]` section
-   - Use descriptive names following `sentries-*` pattern
-   - Test installation with `pip install -e .`
+# See what would be cleaned up (dry run)
+sentries-cleanup --dry-run
 
-#### **Testing & Validation**
-7. **Test Your Changes**: Use `scripts/smoke.py` and local testing
-8. **Update Documentation**: Keep README and examples current
-9. **Consider Backwards Compatibility**: New features shouldn't break existing functionality
+# Clean up everything
+sentries-cleanup --force
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-[Your License Here]
+# Clean up artifacts older than 7 days
+sentries-cleanup --max-age-days 7
+```
 
 ## 🆘 Troubleshooting
 
@@ -520,80 +335,44 @@ ollama pull deepseek-coder:6.7b-instruct-q5_K_M
 - Ensure `GITHUB_TOKEN` has appropriate permissions
 - Check repository access and secrets configuration
 
-**Diff Application Failed**
-- Verify diff format is valid unified diff
-- Check file permissions and git status
-- Ensure changes are within allowlist paths
+## 📝 Project Status & Future
 
-### Debug Mode
+### **Current State**
+This project is a **successful POC** that demonstrates:
+- Local LLMs can fix simple test failures
+- Patch engine architecture is sound
+- Git integration is production-ready
+- Safety mechanisms work effectively
 
-Set logging level for more verbose output:
-```bash
-export LOG_LEVEL=DEBUG
-testsentry
-```
+### **Why Tabled**
+- Resource limitations (computational, maintenance overhead)
+- Complex test scenarios require human intervention
+- Limited ROI for the complexity involved
+- Better alternatives exist for production use
 
-## 🏷️ Artifact Tagging & Cleanup
+### **Future Possibilities**
+- Revisit when local LLM technology improves significantly
+- Apply learned patterns to other AI-assisted development tools
+- Use as reference for similar projects
+- Extract working components for other use cases
 
-### **Automatic Tagging**
-The sentries automatically tag all created artifacts for easy identification:
+### **Recommendation**
+**Archive this POC** and revisit when:
+1. Local LLM technology improves significantly
+2. Resource constraints are reduced
+3. Specific use cases emerge that match current capabilities
+4. Better models become available for complex scenarios
 
-#### **Branch Tagging**
-- **Naming Convention**: `ai-test-fixes/<sha>-<timestamp>` or `ai-doc-updates/<sha>-<timestamp>`
-- **Metadata Files**: Each branch contains `.sentries-metadata.json` with creation details
-- **Pattern Recognition**: Branches can be identified by name patterns and metadata
+---
 
-#### **PR Tagging**
-- **Labels**: Automatic labels like `ai-generated`, `sentries`, `sentry-testsentry`, `sentry-docsentry`
-- **Metadata**: PR descriptions include sentries metadata section
-- **Comments**: Automatic metadata comments for easy identification
+## 📄 License
 
-### **Cleanup Utilities**
+MIT License
 
-#### **Status Check**
-```bash
-# Show all sentries artifacts
-sentries-status
+## 🤝 Contributing
 
-# Check specific repository
-sentries-status --repo-path /path/to/repo
-```
+**Note**: This project is currently tabled and not accepting contributions. The codebase is preserved for future reference and potential revival.
 
-#### **Cleanup Operations**
-```bash
-# See what would be cleaned up (dry run)
-sentries-cleanup --dry-run
+---
 
-# Clean up everything
-sentries-cleanup --force
-
-# Clean up artifacts older than 7 days
-sentries-cleanup --max-age-days 7
-
-# Clean up specific repository
-sentries-cleanup --repo-path /path/to/repo --force
-```
-
-#### **Cleanup Features**
-- **Branch Cleanup**: Removes local and remote sentries branches
-- **PR Cleanup**: Closes old sentries PRs
-- **Metadata Cleanup**: Removes orphaned metadata files
-- **Age-based Cleanup**: Configurable retention policies
-- **Safe Operations**: Confirmation prompts and dry-run mode
-
-### **Identification Methods**
-1. **Branch Names**: Pattern matching for AI-generated branches
-2. **Metadata Files**: `.sentries-metadata.json` files in branches
-3. **PR Labels**: GitHub labels starting with `sentry-`
-4. **PR Content**: Metadata sections in PR descriptions
-5. **PR Comments**: Automatic metadata comments
-
-## 🔮 Future Enhancements
-
-- Support for additional LLM providers
-- Custom allowlist configuration
-- Integration with other CI/CD systems
-- Advanced diff validation rules
-- Performance optimization for large repositories
-- Automated cleanup scheduling
-- Custom retention policies
+**⚠️ IMPORTANT**: This is a **proof-of-concept** that has been **tabled**. It demonstrates technical feasibility but is **not suitable for production use**. Use at your own risk and only for evaluation purposes.

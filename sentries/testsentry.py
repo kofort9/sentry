@@ -18,8 +18,9 @@ from typing import Optional
 
 from .chat import chat, get_default_params
 from .diff_utils import apply_unified_diff
+from .intelligent_analysis import create_smart_context
 from .patch_engine import create_patch_engine
-from .prompts import PATCHER_TESTS, PLANNER_TESTS
+from .prompts import PATCHER_TESTS
 from .runner_common import (
     MODEL_PATCH,
     MODEL_PLAN,
@@ -28,6 +29,7 @@ from .runner_common import (
     get_logger,
     validate_environment,
 )
+from .smart_prompts import SmartPrompts
 
 logger = get_logger(__name__)
 
@@ -136,66 +138,175 @@ def validate_planner_scope(planner_response: str) -> tuple[bool, str]:
         return False, f"Error validating planner response: {e}"
 
 
-def get_test_context_with_excerpts(test_output: str) -> str:
+def get_smart_context_packs(test_output: str) -> list:
     """
-    Get minimal test context with actual source code from failing tests.
+    Get smart context packs with intelligent failure analysis.
 
     Args:
         test_output: pytest output with failures
 
     Returns:
-        Context string with actual source code for LLM
+        List of ContextPack objects with targeted context for each failure
     """
-    logger.info("🔍 Extracting test file contents for failing tests")
+    logger.info("🧠 Creating smart context packs with failure classification...")
 
-    # Extract test file names from pytest output
-    lines = test_output.split("\n")
-    test_files = set()
+    context_packs = create_smart_context(test_output)
 
-    for line in lines:
-        # Look for test file paths in pytest output
-        if "tests/" in line and (".py::" in line or "FAILED" in line):
-            # Extract the file path before the :: or FAILED
-            parts = line.split()
-            for part in parts:
-                if "tests/" in part and ".py" in part:
-                    file_path = part.split("::")[0]  # Remove test function name
-                    if file_path.endswith(".py"):
-                        test_files.add(file_path)
-                    break
+    logger.info(f"📦 Generated {len(context_packs)} smart context packs")
+    for pack in context_packs:
+        logger.info(
+            f"  - {pack.failure_info.test_function}: {pack.failure_info.failure_type.value} "
+            f"({pack.context_size} chars)"
+        )
 
-    # Read actual source code from failing test files
-    context_parts = []
-    context_parts.append("=== Pytest Failure Summary ===")
+    return context_packs
 
-    # Add brief failure info
-    failure_lines = []
-    for line in lines:
-        if any(keyword in line.lower() for keyword in ["failed", "assertionerror", "assert "]):
-            failure_lines.append(line.strip())
-    context_parts.append("\n".join(failure_lines[-10:]))  # Last 10 failure lines
 
-    # Add actual source code
-    for test_file in sorted(test_files):
-        try:
-            logger.info(f"📖 Reading source code from {test_file}")
-            with open(test_file, "r") as f:
-                file_content = f.read()
+def generate_smart_patch_json(context_pack, plan: str) -> Optional[str]:
+    """
+    Generate test patch using smart prompts and targeted context.
 
-            context_parts.append("\n" + "=" * 60)
-            context_parts.append(f"Source Code: {test_file}")
-            context_parts.append("(Copy text EXACTLY from this section, including whitespace)")
-            context_parts.append("=" * 60)
-            context_parts.append(file_content)
-            context_parts.append("=" * 60)
+    Args:
+        context_pack: ContextPack with failure-specific information
+        plan: Plan for fixing tests
 
-        except Exception as e:
-            logger.warning(f"⚠️ Could not read {test_file}: {e}")
-            continue
+    Returns:
+        Generated patch string or None if failed
+    """
+    logger.info(f"🔧 Generating smart patch for {context_pack.failure_info.failure_type.value}...")
 
-    context = "\n".join(context_parts)
-    logger.info(f"📝 Extracted source code from {len(test_files)} test files")
-    return context
+    # Get failure-type-specific patcher prompt
+    patcher_prompt_template = SmartPrompts.get_patcher_prompt(
+        context_pack.failure_info.failure_type
+    )
+
+    # Format context with failure-type-specific guidance
+    formatted_context = SmartPrompts.format_context_for_failure(
+        context_pack.context_parts, context_pack.failure_info.failure_type
+    )
+
+    # Add find candidates if available
+    if context_pack.find_candidates:
+        formatted_context += "\n\n=== Suggested Find Candidates (AST-normalized) ==="
+        for candidate in context_pack.find_candidates:
+            formatted_context += f"\n- {candidate}"
+
+    patcher_prompt = f"""Plan: {plan}
+
+CRITICAL INSTRUCTION: Copy text ONLY from the source code sections below.
+DO NOT copy from pytest error messages or failure summaries.
+Pay extreme attention to whitespace - spaces, tabs, and newlines must match exactly.
+
+{formatted_context}
+
+Generate JSON operations to fix the failing tests.
+COPY EXACT TEXT (including all whitespace) from the source code sections above."""
+
+    patcher_response = chat(
+        model=str(MODEL_PATCH),
+        messages=[
+            {"role": "system", "content": patcher_prompt_template},
+            {"role": "user", "content": patcher_prompt},
+        ],
+        temperature=0.1,
+        max_tokens=int(get_default_params("patcher")["max_tokens"]),
+    )
+
+    logger.info(
+        f"🔧 Smart Patcher Response "
+        f"({context_pack.failure_info.failure_type.value}):\n{patcher_response}"
+    )
+
+    # Try to process the response (same validation as before)
+    try:
+        # Try to parse as JSON first
+        data = json.loads(patcher_response)
+
+        # Check for abort responses (new consistent format)
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                logger.warning(f"⚠️ Smart patcher aborted: {abort_reason}")
+                return None
+            else:
+                logger.warning(f"⚠️ Smart patcher aborted with invalid reason: {abort_reason}")
+                return None
+
+        # Check for valid operations
+        if "ops" in data and isinstance(data["ops"], list):
+            logger.info("✅ Smart patcher generated valid JSON operations")
+            return patcher_response
+
+        logger.warning("⚠️ Smart patcher response missing 'ops' key")
+
+    except json.JSONDecodeError:
+        logger.warning("⚠️ Smart patcher response is not valid JSON")
+
+    # Retry with smaller context and explicit JSON requirement
+    logger.info("🔄 Retrying smart patcher with minimal context...")
+
+    # Use only the test function and error for retry
+    minimal_context = "\n".join(context_pack.context_parts[:2])  # Test function + failure info
+
+    retry_prompt = f"""Plan: {plan}
+
+CRITICAL: You MUST respond with ONLY valid JSON.
+
+Source code excerpt (copy exact text from the source code, NOT pytest output):
+
+{minimal_context}
+
+JSON format required:
+{{"ops": [{{"file": "tests/test_file.py",
+            "find": "exact source code text",
+            "replace": "replacement"}}]}}
+
+Example: To fix "assert 1 == 2" to pass, use:
+{{"ops": [{{"file": "tests/test_basic.py",
+            "find": "assert 1 == 2",
+            "replace": "assert 1 == 1"}}]}}
+
+If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
+
+    retry_response = chat(
+        model=str(MODEL_PATCH),
+        messages=[
+            {"role": "system", "content": patcher_prompt_template},
+            {"role": "user", "content": retry_prompt},
+        ],
+        temperature=0.1,
+        max_tokens=int(get_default_params("patcher")["max_tokens"]),
+    )
+
+    logger.info(f"🔧 Smart Patcher Retry Response:\n{retry_response}")
+
+    # Try to process retry response
+    try:
+        # Try to parse as JSON first
+        data = json.loads(retry_response)
+
+        # Check for abort responses
+        if "abort" in data:
+            abort_reason = data["abort"]
+            if abort_reason in ["out_of_scope", "cannot_comply", "exact_match_not_found"]:
+                logger.warning(f"⚠️ Smart patcher retry aborted: {abort_reason}")
+                return None
+            else:
+                reason_msg = f"⚠️ Smart patcher retry aborted with invalid reason: {abort_reason}"
+                logger.warning(reason_msg)
+            return None
+
+        # Check for valid operations
+        if "ops" in data and isinstance(data["ops"], list):
+            logger.info("✅ Smart patcher retry generated valid JSON operations")
+            return retry_response
+
+        logger.warning("⚠️ Smart patcher retry response missing 'ops' key")
+        return None
+
+    except json.JSONDecodeError:
+        logger.warning("⚠️ Smart patcher retry response is not valid JSON")
+        return None
 
 
 def generate_test_patch_json(plan: str, context: str) -> Optional[str]:
@@ -312,7 +423,7 @@ If you cannot create valid JSON operations, reply: {{"abort": "cannot comply wit
                 return None
             else:
                 logger.warning(f"⚠️ Patcher retry aborted with invalid reason: {abort_reason}")
-                return None
+            return None
 
         # Check for valid operations
         if "ops" in data and isinstance(data["ops"], list):
@@ -414,7 +525,7 @@ def apply_and_test_patch_with_engine(diff_str: str, test_file_path: str) -> tupl
 def main() -> None:
     """Main TestSentry function."""
     show_sentries_banner()
-    logger.info("🧪 TestSentry v2 starting with Patch Engine...")
+    logger.info("🧪 TestSentry v3 starting with Smart Analysis + Patch Engine...")
 
     # Validate environment
     if not validate_environment():
@@ -427,102 +538,103 @@ def main() -> None:
 
     logger.info("❌ Test failures detected, starting AI-powered fix process...")
 
-    # Get test context with minimal excerpts for the patcher
-    context = get_test_context_with_excerpts(failing_tests)
+    # Get smart context packs with failure classification
+    context_packs = get_smart_context_packs(failing_tests)
+    if not context_packs:
+        exit_noop("No failures could be classified for smart processing")
 
-    # Plan test fixes
-    logger.info("🤖 Calling LLM Planner to analyze test failures...")
+    # Process each failure type separately for optimal results
+    successful_fixes = 0
 
-    planner_prompt = f"""Analyze these test failures and plan minimal fixes:
+    for i, context_pack in enumerate(context_packs, 1):
+        failure_info = context_pack.failure_info
+        logger.info(
+            f"🎯 Processing failure {i}/{len(context_packs)}: "
+            f"{failure_info.test_function} ({failure_info.failure_type.value})"
+        )
 
-{context}
+        # Get failure-type-specific planner prompt
+        planner_prompt_template = SmartPrompts.get_planner_prompt(failure_info.failure_type)
+
+        # Format context for this specific failure
+        formatted_context = SmartPrompts.format_context_for_failure(
+            context_pack.context_parts, failure_info.failure_type
+        )
+
+        failure_type = failure_info.failure_type.value
+        planner_prompt = f"""Analyze this {failure_type} failure and plan minimal fixes:
+
+{formatted_context}
+
+Focus on fixing: {failure_info.test_function} in {failure_info.test_file}
+Error: {failure_info.error_message}
 
 Remember: ONLY modify files under tests/** (and sentries/test_*.py).
 NEVER edit configs, allowlists, or non-test modules.
-If fix requires non-test changes, reply: {{"abort": "out of scope"}}"""
+If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
 
-    planner_response = chat(
-        model=str(MODEL_PLAN),
-        messages=[
-            {"role": "system", "content": PLANNER_TESTS},
-            {"role": "user", "content": planner_prompt},
-        ],
-        temperature=0.1,
-        max_tokens=int(get_default_params("planner")["max_tokens"]),
-    )
-
-    logger.info(f"🧠 LLM Planner Response:\n{planner_response}")
-
-    # Validate planner scope
-    is_valid, reason = validate_planner_scope(planner_response)
-    if not is_valid:
-        logger.warning(f"⚠️ Planner scope validation failed: {reason}")
-
-        # One retry with scope reminder
-        logger.info("🔄 Retrying planner with scope reminder...")
-        scope_reminder = f"""SCOPE REMINDER:
-You can ONLY modify files in the tests/ directory.
-You CANNOT modify any other files.
-
-{context}
-
-If you cannot fix the tests within test-only scope, reply:
-{{"abort": "out of scope"}}
-
-If you cannot fix the tests, reply:
-{{"abort": "cannot comply with constraints"}}"""
+        logger.info(f"🤖 Calling Smart LLM Planner for {failure_info.failure_type.value}...")
 
         planner_response = chat(
             model=str(MODEL_PLAN),
             messages=[
-                {"role": "system", "content": PLANNER_TESTS},
-                {"role": "user", "content": scope_reminder},
+                {"role": "system", "content": planner_prompt_template},
+                {"role": "user", "content": planner_prompt},
             ],
             temperature=0.1,
             max_tokens=int(get_default_params("planner")["max_tokens"]),
         )
 
-        logger.info(f"🧠 LLM Planner Retry Response:\n{planner_response}")
+        logger.info(
+            f"🧠 Smart Planner Response ({failure_info.failure_type.value}):\n{planner_response}"
+        )
 
-        # Validate retry response
+        # Validate planner scope
         is_valid, reason = validate_planner_scope(planner_response)
         if not is_valid:
-            exit_noop(f"Planner scope validation failed after retry: {reason}")
+            logger.warning(
+                f"⚠️ Planner scope validation failed for {failure_info.test_function}: {reason}"
+            )
+            continue  # Skip this failure, try next one
 
-    logger.info("✅ Planner scope validation passed")
+        # Extract plan from valid response
+        try:
+            plan_data = json.loads(planner_response)
+            plan = plan_data.get("plan", "Fix failing tests")
+        except json.JSONDecodeError:
+            plan = "Fix failing tests"
+            logger.warning("Could not parse planner response, using default plan")
 
-    # Extract plan from valid response
-    try:
-        plan_data = json.loads(planner_response)
-        plan = plan_data.get("plan", "Fix failing tests")
-    except json.JSONDecodeError:
-        plan = "Fix failing tests"
-        logger.warning("Could not parse planner response, using default plan")
+        # Generate patch using smart prompts and targeted context
+        patch_json = generate_smart_patch_json(context_pack, plan)
+        if not patch_json:
+            logger.warning(f"⚠️ Failed to generate patch for {failure_info.test_function}")
+            continue  # Skip this failure, try next one
 
-    # Generate test patch JSON with feedback loop
-    diff_str = generate_test_patch_json(plan, context)
-    if not diff_str:
-        exit_noop("Could not generate test patch JSON")
+        # Apply patch using patch engine
+        logger.info(f"🔨 Applying smart patch for {failure_info.test_function}...")
+        success, feedback = apply_and_test_patch_with_engine(patch_json, failure_info.test_file)
 
-    # Apply and test the patch
-    logger.info("🔧 Applying and testing patch...")
+        if success:
+            logger.info(
+                f"✅ Smart fix applied successfully for {failure_info.test_function}: {feedback}"
+            )
+            successful_fixes += 1
+            # For now, process one fix at a time to avoid conflicts
+            break
+        else:
+            logger.warning(f"❌ Smart patch failed for {failure_info.test_function}: {feedback}")
+            continue
 
-    # Extract test file path from the JSON operations
-    try:
-        data = json.loads(diff_str)
-        test_files = [op.get("file", "") for op in data.get("ops", [])]
-        if not test_files:
-            exit_noop("No test files specified in patch operations")
+    # Report results
+    if successful_fixes == 0:
+        exit_noop(f"No fixes could be applied. Processed {len(context_packs)} classified failures.")
 
-        # Use the first test file for verification
-        test_file_path = test_files[0]
-        logger.info(f"🎯 Testing patch on: {test_file_path}")
-
-    except json.JSONDecodeError:
-        exit_noop("Invalid JSON in patch operations")
-
-    # Apply the patch and verify it works
-    success, feedback = apply_and_test_patch_with_engine(diff_str, test_file_path)
+    logger.info("✅ Smart fixes applied successfully!")
+    success = True
+    feedback = (
+        f"Smart TestSentry successfully fixed {successful_fixes}/{len(context_packs)} failures"
+    )
 
     if success:
         logger.info("🎉 Patch applied and verified successfully!")
@@ -540,9 +652,25 @@ If you cannot fix the tests, reply:
         subprocess.run(["git", "checkout", "-b", fix_branch], cwd=".")
 
         # Commit the fix
+        # Get the test file that was actually fixed
+        try:
+            data = json.loads(patch_json)
+            test_files = [op.get("file", "") for op in data.get("ops", [])]
+            if test_files:
+                test_file_path = test_files[0]
+            else:
+                test_file_path = "tests/"
+        except Exception:
+            test_file_path = "tests/"
+
         subprocess.run(["git", "add", test_file_path], cwd=".")
         subprocess.run(
-            ["git", "commit", "-m", f"fix: {plan}\n\nApplied by TestSentry using Patch Engine v2"],
+            [
+                "git",
+                "commit",
+                "-m",
+                f"fix: {plan}\n\nApplied by TestSentry using Smart Analysis + Patch Engine v3",
+            ],
             cwd=".",
         )
 

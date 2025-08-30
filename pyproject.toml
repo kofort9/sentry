@@ -11,7 +11,7 @@ maintainers = [{name = "Sentries Team", email = "team@sentries.dev"}]
 license = {text = "MIT"}
 keywords = ["testing", "documentation", "automation", "llm", "ai", "ci-cd", "github-actions"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 7 - Inactive",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -23,6 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Documentation",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 readme = "README.md"
 requires-python = ">=3.10"
