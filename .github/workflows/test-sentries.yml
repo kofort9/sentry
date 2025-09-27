@@ -6,6 +6,13 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ main, master, develop ]
+  workflow_dispatch:
+    inputs:
+      run_llm_tests:
+        description: 'Run LLM-based TestSentry tests (requires self-hosted runner)'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: sentry-${{ github.ref }}
@@ -96,7 +103,13 @@ jobs:
   test-sentry-llm:
     runs-on: self-hosted
     needs: [test-basic, lint]
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_llm_tests == 'true') ||
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.draft == false && 
+       (contains(github.event.pull_request.labels.*.name, 'test-llm') || 
+        contains(github.event.pull_request.title, '[test-llm]') ||
+        contains(github.event.pull_request.body, '[test-llm]')))
     
     steps:
       - name: Checkout repository
@@ -104,6 +117,21 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+      
+      - name: Explain LLM test execution
+        run: |
+          echo "🤖 TestSentry LLM tests are running because:"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "  - Manual trigger with run_llm_tests=true"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "  - PR has 'test-llm' label, title, or body"
+            echo "  - PR is not a draft"
+          fi
+          echo ""
+          echo "💡 To skip LLM tests in the future:"
+          echo "  - Remove 'test-llm' from PR title/body"
+          echo "  - Remove 'test-llm' label from PR"
+          echo "  - Or run workflow manually with run_llm_tests=false"
       
       - name: Download test failure artifacts
         if: always()
@@ -212,6 +240,35 @@ jobs:
             echo "📋 Reason: ${{ steps.check-llm.outputs.reason }}"
             echo "💡 This is normal - LLM jobs only run on meaningful code changes"
           fi
+
+  # Job that runs when LLM tests are skipped to provide clear feedback
+  skip-llm-tests:
+    runs-on: ubuntu-latest
+    needs: [test-basic, lint]
+    if: |
+      github.event_name == 'pull_request' && 
+      github.event.pull_request.draft == false &&
+      !(contains(github.event.pull_request.labels.*.name, 'test-llm') || 
+        contains(github.event.pull_request.title, '[test-llm]') ||
+        contains(github.event.pull_request.body, '[test-llm]'))
+    
+    steps:
+      - name: Explain LLM test skip
+        run: |
+          echo "⏭️  TestSentry LLM tests are being skipped"
+          echo ""
+          echo "📋 Current PR conditions:"
+          echo "  - PR is not a draft: ✅"
+          echo "  - Has 'test-llm' label: ❌"
+          echo "  - Title contains '[test-llm]': ❌"
+          echo "  - Body contains '[test-llm]': ❌"
+          echo ""
+          echo "💡 To run LLM tests, add one of the following:"
+          echo "  - Add 'test-llm' label to this PR"
+          echo "  - Add '[test-llm]' to PR title or body"
+          echo "  - Or run workflow manually with run_llm_tests=true"
+          echo ""
+          echo "✅ Basic tests and linting still ran successfully!"
 
   integration-test:
     runs-on: ubuntu-latest
