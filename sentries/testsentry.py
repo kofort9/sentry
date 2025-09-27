@@ -17,6 +17,33 @@ import time
 from typing import Optional
 
 from .chat import chat, get_default_params
+
+# Import observability hooks
+try:
+    from packages.metrics_core.observability import (
+        analyze_text_for_pii,
+        get_observability,
+        log_llm_interaction,
+        save_observability_metrics,
+    )
+
+    OBSERVABILITY_AVAILABLE = True
+except ImportError:
+    OBSERVABILITY_AVAILABLE = False
+
+    def log_llm_interaction(*args, **kwargs):
+        pass
+
+    def analyze_text_for_pii(*args, **kwargs):
+        return {}
+
+    def save_observability_metrics():
+        pass
+
+    def get_observability():
+        return None
+
+
 from .diff_utils import apply_unified_diff
 from .intelligent_analysis import create_smart_context
 from .patch_engine import create_patch_engine
@@ -32,6 +59,60 @@ from .runner_common import (
 from .smart_prompts import SmartPrompts
 
 logger = get_logger(__name__)
+
+
+def chat_with_observability(model: str, messages: list, **kwargs) -> str:
+    """
+    Wrapper around chat function that adds observability logging.
+
+    Args:
+        model: LLM model to use
+        messages: List of message dictionaries
+        **kwargs: Additional arguments for chat function
+
+    Returns:
+        LLM response
+    """
+    # Extract prompt and response for observability
+    user_messages = [msg for msg in messages if msg.get("role") == "user"]
+    system_messages = [msg for msg in messages if msg.get("role") == "system"]
+
+    # Combine all user messages as the "prompt"
+    prompt = "\n".join([msg["content"] for msg in user_messages])
+
+    # Log the interaction before making the call
+    logger.info(f"🤖 Calling LLM: {model}")
+    if OBSERVABILITY_AVAILABLE:
+        logger.info("📊 Observability enabled - logging LLM interaction")
+
+    # Make the actual LLM call
+    response = chat(model=model, messages=messages, **kwargs)
+
+    # Log the interaction for observability
+    if OBSERVABILITY_AVAILABLE:
+        log_llm_interaction(
+            prompt=prompt,
+            response=response,
+            service="testsentry",
+            release="dev",
+            metadata={
+                "model": model,
+                "system_messages": len(system_messages),
+                "user_messages": len(user_messages),
+                "total_messages": len(messages),
+            },
+        )
+
+        # Analyze response for PII
+        pii_analysis = analyze_text_for_pii(response)
+        if pii_analysis.get("pii_spans"):
+            logger.warning(
+                f"⚠️  PII detected in LLM response: {len(pii_analysis['pii_spans'])} spans"
+            )
+        else:
+            logger.info("✅ No PII detected in LLM response")
+
+    return response
 
 
 def discover_test_failures() -> Optional[str]:
@@ -202,7 +283,7 @@ Pay extreme attention to whitespace - spaces, tabs, and newlines must match exac
 Generate JSON operations to fix the failing tests.
 COPY EXACT TEXT (including all whitespace) from the source code sections above."""
 
-    patcher_response = chat(
+    patcher_response = chat_with_observability(
         model=str(MODEL_PATCH),
         messages=[
             {"role": "system", "content": patcher_prompt_template},
@@ -268,7 +349,7 @@ Example: To fix "assert 1 == 2" to pass, use:
 
 If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
 
-    retry_response = chat(
+    retry_response = chat_with_observability(
         model=str(MODEL_PATCH),
         messages=[
             {"role": "system", "content": patcher_prompt_template},
@@ -334,7 +415,7 @@ Pay extreme attention to whitespace - spaces, tabs, and newlines must match exac
 Generate JSON operations to fix the failing tests.
 COPY EXACT TEXT (including all whitespace) from the source code sections above."""
 
-    patcher_response = chat(
+    patcher_response = chat_with_observability(
         model=str(MODEL_PATCH),
         messages=[
             {"role": "system", "content": PATCHER_TESTS},
@@ -398,7 +479,7 @@ Example: To fix "assert 1 == 2" to pass, use:
 
 If you cannot create valid JSON operations, reply: {{"abort": "cannot comply with constraints"}}"""
 
-    retry_response = chat(
+    retry_response = chat_with_observability(
         model=str(MODEL_PATCH),
         messages=[
             {"role": "system", "content": PATCHER_TESTS},
@@ -575,7 +656,7 @@ If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
 
         logger.info(f"🤖 Calling Smart LLM Planner for {failure_info.failure_type.value}...")
 
-        planner_response = chat(
+        planner_response = chat_with_observability(
             model=str(MODEL_PLAN),
             messages=[
                 {"role": "system", "content": planner_prompt_template},
@@ -727,6 +808,17 @@ If fix requires non-test changes, reply: {{"abort": "out_of_scope"}}"""
             logger.warning("⚠️ GitHub CLI not available, manual PR creation needed")
             logger.info(f"Branch pushed: {fix_branch}")
             logger.info(f"PR body:\n{pr_body}")
+
+        # Save observability metrics before exiting
+        if OBSERVABILITY_AVAILABLE:
+            logger.info("💾 Saving observability metrics...")
+            save_observability_metrics()
+
+            # Get and log summary metrics
+            obs = get_observability()
+            if obs:
+                summary = obs.get_summary_metrics()
+                logger.info(f"📊 Observability Summary: {summary}")
 
         exit_success("Test fix applied and PR created successfully")
 

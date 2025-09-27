@@ -253,3 +253,14 @@ test-results/
 .coverage
 .pytest_cache/
 .tox/
+
+# Observability metrics
+warehouse/
+*.duckdb
+.cache/
+
+# Keep reports directory and PNG files
+!reports/
+!reports/*.png
+!reports/*.csv
+!reports/.keep

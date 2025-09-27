@@ -189,6 +189,16 @@ jobs:
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         run: |
           pip install -e .
+          pip install -e .[viz]
+      
+      - name: Setup Observability
+        if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
+        run: |
+          echo "📊 Setting up observability metrics..."
+          make setup
+          make sample-data
+          make benchmarks
+          echo "✅ Observability setup complete"
       
       - name: Run TestSentry with LLM
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
@@ -219,6 +229,28 @@ jobs:
         run: |
           docsentry
       
+      - name: Generate Observability Reports
+        if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
+        run: |
+          echo "📈 Generating observability reports..."
+          make reports
+          
+          # Check if reports were generated
+          if [ -f "reports/drift_psi_js.png" ] && [ -f "reports/scrubber_leakage.png" ] && [ -f "reports/drift_top_tokens.csv" ]; then
+            echo "✅ Observability reports generated successfully"
+            ls -la reports/
+          else
+            echo "⚠️ Some reports may be missing"
+            ls -la reports/ || echo "Reports directory not found"
+          fi
+      
+      - name: Check Report Determinism
+        if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
+        run: |
+          echo "🔍 Checking report determinism..."
+          make check-determinism
+          echo "✅ Reports are deterministic"
+      
       - name: LLM Jobs Summary
         if: always()
         run: |
@@ -227,7 +259,15 @@ jobs:
               echo "🎉 LLM jobs completed successfully!"
               echo "📋 Reason: ${{ steps.check-llm.outputs.reason }}"
               echo "🧪 Test status: ${{ steps.pytest-check.outputs.test_status }}"
+              echo "📊 Observability metrics collected and reports generated"
               echo "🔗 Check the PR for any improvements created by sentries"
+              
+              # Add observability summary to GitHub step summary
+              echo "## 📊 Observability Summary" >> $GITHUB_STEP_SUMMARY
+              echo "- **PSI Last Week**: Check drift_psi_js.png for trend" >> $GITHUB_STEP_SUMMARY
+              echo "- **PII Leakage Rate**: Check scrubber_leakage.png for performance" >> $GITHUB_STEP_SUMMARY
+              echo "- **Top Tokens**: See drift_top_tokens.csv for token analysis" >> $GITHUB_STEP_SUMMARY
+              echo "- **Reports Generated**: $(ls reports/*.png reports/*.csv 2>/dev/null | wc -l) files" >> $GITHUB_STEP_SUMMARY
               
               if [ "${{ steps.pytest-check.outputs.test_status }}" = "failing" ]; then
                 echo "💡 TestSentry attempted to fix failing tests - check for new PRs"
