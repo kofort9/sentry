@@ -11,17 +11,8 @@ from typing import Optional, Tuple
 
 from .chat import chat, get_default_params
 from .diff_utils import apply_unified_diff, extract_diff_summary
-from .git_utils import (
-    commit_all,
-    create_branch,
-    get_base_branch,
-    open_pull_request,
-)
-from .patch_engine import (
-    NoEffectiveChangeError,
-    ValidationError,
-    create_patch_engine,
-)
+from .git_utils import commit_all, create_branch, get_base_branch, open_pull_request
+from .patch_engine import NoEffectiveChangeError, ValidationError, create_patch_engine
 from .prompts import PATCHER_DOCS, PLANNER_DOCS
 from .runner_common import (
     MODEL_PATCH,
