@@ -64,7 +64,7 @@ class TestSentryObservability:
                 "total_length": len(prompt) + len(response),
                 "mode": metadata.get("mode", "unknown"),  # Track LLM mode
                 "is_simulation": metadata.get("mode") == "simulation",
-                "is_api": metadata.get("mode") == "api", 
+                "is_api": metadata.get("mode") == "api",
                 "is_local": metadata.get("mode") == "local",
                 **metadata,
             },
@@ -79,7 +79,8 @@ class TestSentryObservability:
     def analyze_pii_in_text(self, text: str) -> Dict[str, Any]:
         """Analyze PII in text and return metrics."""
         # Detect PII
-        pii_spans = detect_all_pii(text)
+        pii_result = detect_all_pii(text)
+        pii_spans = pii_result.pii_spans
         pii_stats = get_pii_statistics(pii_spans, text)
 
         # Log PII detection

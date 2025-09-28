@@ -16,6 +16,20 @@ class PIISpan:
     reason_code: str = ""
 
 
+@dataclass
+class PIIDetectionResult:
+    """Result of PII detection analysis."""
+    
+    pii_spans: List[PIISpan]
+    total_pii_chars: int
+    leakage_rate: float = 0.0
+    
+    def __post_init__(self):
+        """Calculate derived metrics."""
+        if not hasattr(self, 'total_pii_chars') or self.total_pii_chars is None:
+            self.total_pii_chars = sum(span.end - span.start for span in self.pii_spans)
+
+
 # Regex patterns for PII detection
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 
@@ -259,3 +273,28 @@ def get_pii_statistics(spans: List[PIISpan], text: str) -> Dict[str, any]:
         "pii_types": pii_types,
         "char_coverage": total_chars / text_length if text_length > 0 else 0.0,
     }
+
+
+def detect_all_pii(text: str) -> PIIDetectionResult:
+    """Detect all types of PII in the given text."""
+    all_spans = []
+    
+    # Detect each type of PII
+    all_spans.extend(detect_email(text))
+    all_spans.extend(detect_ip_address(text))
+    all_spans.extend(detect_phone_number(text))
+    all_spans.extend(detect_credit_card(text))
+    all_spans.extend(detect_aws_key(text))
+    all_spans.extend(detect_api_token(text))
+    
+    # Sort spans by start position
+    all_spans.sort(key=lambda span: span.start)
+    
+    # Calculate total PII characters
+    total_pii_chars = sum(span.end - span.start for span in all_spans)
+    
+    return PIIDetectionResult(
+        pii_spans=all_spans,
+        total_pii_chars=total_pii_chars,
+        leakage_rate=0.0  # Will be calculated later if needed
+    )
