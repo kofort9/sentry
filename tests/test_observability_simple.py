@@ -11,7 +11,6 @@ from sentries.chat import chat
 # import pytest  # Not used in current tests
 
 
-
 class TestObservabilitySimple:
     """Test basic observability integration."""
 
