@@ -4,7 +4,7 @@ Working tests for observability integration that focus on actual functionality.
 
 import os
 import shutil
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from sentries.chat import chat
 

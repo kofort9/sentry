@@ -40,10 +40,7 @@ def chat(
 
     # Import observability here to avoid circular imports
     try:
-        from packages.metrics_core.observability import (
-            analyze_text_for_pii,
-            log_llm_interaction,
-        )
+        from packages.metrics_core.observability import analyze_text_for_pii, log_llm_interaction
 
         observability_available = True
     except ImportError:

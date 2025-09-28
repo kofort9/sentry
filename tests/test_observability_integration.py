@@ -3,8 +3,7 @@ Test observability integration with the three-mode LLM system.
 """
 
 import os
-from unittest.mock import patch, MagicMock
-
+from unittest.mock import MagicMock, patch
 
 from sentries.chat import chat
 

@@ -6,9 +6,10 @@ Tests the integration without requiring complex observability dependencies.
 import os
 from unittest.mock import MagicMock, patch
 
+from sentries.chat import chat
+
 # import pytest  # Not used in current tests
 
-from sentries.chat import chat
 
 
 class TestObservabilitySimple:

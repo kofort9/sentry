@@ -4,9 +4,9 @@ Tests the full observability pipeline with all three modes.
 """
 
 import os
-import tempfile
 import shutil
-from unittest.mock import patch, MagicMock
+import tempfile
+from unittest.mock import MagicMock, patch
 
 from sentries.chat import chat
 
@@ -471,7 +471,7 @@ class TestObservabilityComponents:
         """Test PII detection components work correctly."""
         # Test that we can import and use PII detection
         try:
-            from packages.scrubber.detectors import detect_all_pii, PIIDetectionResult, PIISpan
+            from packages.scrubber.detectors import PIIDetectionResult, PIISpan, detect_all_pii
 
             # Test basic PII detection
             test_text = "Contact john.doe@example.com or call (555) 123-4567"
@@ -511,8 +511,9 @@ class TestObservabilityComponents:
     def test_metrics_components(self) -> None:
         """Test metrics calculation components."""
         try:
-            from packages.metrics_core.psi_js import population_stability_index, jensen_shannon
             import numpy as np
+
+            from packages.metrics_core.psi_js import jensen_shannon, population_stability_index
 
             # Test PSI calculation
             baseline = np.array([0.4, 0.3, 0.2, 0.1])
