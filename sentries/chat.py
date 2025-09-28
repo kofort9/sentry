@@ -37,24 +37,25 @@ def chat(
     **kwargs: Any,
 ) -> str:
     """Chat with an LLM using the specified model and messages."""
-    
+
     # Import observability here to avoid circular imports
     try:
         from packages.metrics_core.observability import (
             analyze_text_for_pii,
             log_llm_interaction,
         )
+
         observability_available = True
     except ImportError:
         observability_available = False
 
     # Determine which mode we're using
     mode = "simulation" if is_simulation_mode() else "api" if has_api_key() else "local"
-    
+
     # Extract prompt for observability
     user_messages = [msg for msg in messages if msg.get("role") == "user"]
     prompt = "\n".join([msg["content"] for msg in user_messages])
-    
+
     logger.info(f"🤖 Using {mode} mode with model: {model}")
     if observability_available:
         logger.info("📊 Observability enabled - logging LLM interaction")
@@ -62,6 +63,7 @@ def chat(
     # Make the actual LLM call based on mode
     if mode == "simulation":
         from .chat_simulation import chat_simulation
+
         response = chat_simulation(model, messages, temperature, max_tokens, **kwargs)
     elif mode == "api":
         response = chat_with_api(model, messages, temperature, max_tokens, **kwargs)
@@ -70,32 +72,37 @@ def chat(
 
     # Log the interaction for observability
     if observability_available:
-        system_messages = [msg for msg in messages if msg.get("role") == "system"]
-        
-        log_llm_interaction(
-            prompt=prompt,
-            response=response,
-            service="testsentry",
-            release="dev",
-            metadata={
-                "model": model,
-                "mode": mode,  # Track which mode was used
-                "system_messages": len(system_messages),
-                "user_messages": len(user_messages),
-                "total_messages": len(messages),
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            },
-        )
-
-        # Analyze response for PII
-        pii_analysis = analyze_text_for_pii(response)
-        if pii_analysis.get("pii_spans"):
-            logger.warning(
-                f"⚠️  PII detected in LLM response: {len(pii_analysis['pii_spans'])} spans"
+        try:
+            system_messages = [msg for msg in messages if msg.get("role") == "system"]
+            
+            log_llm_interaction(
+                prompt=prompt,
+                response=response,
+                service="testsentry",
+                release="dev",
+                metadata={
+                    "model": model,
+                    "mode": mode,  # Track which mode was used
+                    "system_messages": len(system_messages),
+                    "user_messages": len(user_messages),
+                    "total_messages": len(messages),
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                },
             )
-        else:
-            logger.info("✅ No PII detected in LLM response")
+
+            # Analyze response for PII
+            pii_analysis = analyze_text_for_pii(response)
+            if pii_analysis.get("pii_spans"):
+                logger.warning(
+                    f"⚠️  PII detected in LLM response: {len(pii_analysis['pii_spans'])} spans"
+                )
+            else:
+                logger.info("✅ No PII detected in LLM response")
+                
+        except Exception as e:
+            logger.warning(f"⚠️  Observability logging failed: {e}")
+            # Continue execution - don't let observability errors break chat
 
     return response
 
@@ -108,21 +115,21 @@ def chat_with_api(
     **kwargs: Any,
 ) -> str:
     """Chat using API keys (OpenAI, Anthropic, or Groq) with fallback."""
-    
+
     # Try Groq first (free tier available)
     if os.getenv("GROQ_API_KEY"):
         try:
             return chat_with_groq(model, messages, temperature, max_tokens, **kwargs)
         except Exception as e:
             logger.warning(f"Groq API failed: {e}, trying fallback...")
-    
+
     # Try OpenAI
     if os.getenv("OPENAI_API_KEY"):
         try:
             return chat_with_openai(model, messages, temperature, max_tokens, **kwargs)
         except Exception as e:
             logger.warning(f"OpenAI API failed: {e}, trying fallback...")
-    
+
     # Try Anthropic
     if os.getenv("ANTHROPIC_API_KEY"):
         try:
@@ -130,7 +137,7 @@ def chat_with_api(
         except Exception as e:
             logger.warning(f"Anthropic API failed: {e}, no more fallbacks available")
             raise
-    
+
     raise ValueError("No valid API key found")
 
 
