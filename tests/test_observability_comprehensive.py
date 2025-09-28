@@ -30,14 +30,14 @@ class TestObservabilityComprehensive:
         with patch.dict(os.environ, {"SENTRIES_SIMULATION_MODE": "true"}):
             # Mock all observability components
             mock_log = MagicMock()
-            mock_analyze = MagicMock(return_value={
-                "pii_spans": [],
-                "total_pii_chars": 0,
-                "leakage_rate": 0.0
-            })
+            mock_analyze = MagicMock(
+                return_value={"pii_spans": [], "total_pii_chars": 0, "leakage_rate": 0.0}
+            )
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     # Test multiple interactions
                     test_cases = [
                         {"role": "user", "content": "Fix this test: assert 1 == 2"},
@@ -66,10 +66,11 @@ class TestObservabilityComprehensive:
 
     def test_observability_api_mode_with_fallback(self) -> None:
         """Test observability with API mode and fallback chain."""
-        with patch.dict(os.environ, {
-            "GROQ_API_KEY": "test-groq-key",
-            "OPENAI_API_KEY": "test-openai-key"
-        }, clear=True):
+        with patch.dict(
+            os.environ,
+            {"GROQ_API_KEY": "test-groq-key", "OPENAI_API_KEY": "test-openai-key"},
+            clear=True,
+        ):
             mock_log = MagicMock()
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
@@ -77,7 +78,9 @@ class TestObservabilityComprehensive:
             with patch("sentries.chat.chat_with_groq", side_effect=Exception("Groq failed")):
                 with patch("sentries.chat.chat_with_openai", return_value="OpenAI response"):
                     with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                        with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                        with patch(
+                            "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                        ):
                             messages = [{"role": "user", "content": "Hello"}]
                             response = chat("gpt-4", messages)
 
@@ -98,10 +101,12 @@ class TestObservabilityComprehensive:
 
             with patch("sentries.chat.chat_with_ollama", return_value="Local response"):
                 with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                    with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                    with patch(
+                        "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                    ):
                         messages = [
                             {"role": "system", "content": "You are helpful"},
-                            {"role": "user", "content": "Hello world"}
+                            {"role": "user", "content": "Hello world"},
                         ]
                         response = chat("llama3.1", messages, max_tokens=1000)
 
@@ -122,13 +127,13 @@ class TestObservabilityComprehensive:
         pii_responses = [
             "Contact me at john.doe@example.com for more info",
             "My IP address is 192.168.1.1",
-            "Call me at (555) 123-4567"
+            "Call me at (555) 123-4567",
         ]
 
         modes = [
             ("simulation", {"SENTRIES_SIMULATION_MODE": "true"}),
             ("api", {"GROQ_API_KEY": "test-key"}),
-            ("local", {})
+            ("local", {}),
         ]
 
         for mode_name, env_vars in modes:
@@ -136,11 +141,13 @@ class TestObservabilityComprehensive:
                 mock_log = MagicMock()
 
                 # Mock PII detection to return different results
-                mock_analyze = MagicMock(side_effect=[
-                    {"pii_spans": [{"type": "email", "start": 11, "end": 31}]},
-                    {"pii_spans": [{"type": "ip", "start": 18, "end": 29}]},
-                    {"pii_spans": [{"type": "phone", "start": 11, "end": 25}]}
-                ])
+                mock_analyze = MagicMock(
+                    side_effect=[
+                        {"pii_spans": [{"type": "email", "start": 11, "end": 31}]},
+                        {"pii_spans": [{"type": "ip", "start": 18, "end": 29}]},
+                        {"pii_spans": [{"type": "phone", "start": 11, "end": 25}]},
+                    ]
+                )
 
                 # Mock appropriate chat function
                 if mode_name == "api":
@@ -152,7 +159,9 @@ class TestObservabilityComprehensive:
 
                 with chat_mock if mode_name != "simulation" else MagicMock():
                     with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                        with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                        with patch(
+                            "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                        ):
                             for i, expected_response in enumerate(pii_responses):
                                 if mode_name == "simulation":
                                     # Simulation mode returns its own responses
@@ -177,7 +186,9 @@ class TestObservabilityComprehensive:
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     messages = [{"role": "user", "content": "Hello"}]
 
                     # Should not raise exception
@@ -195,7 +206,9 @@ class TestObservabilityComprehensive:
             mock_analyze = MagicMock(side_effect=Exception("PII analysis failed"))
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     messages = [{"role": "user", "content": "Hello"}]
 
                     try:
@@ -216,7 +229,9 @@ class TestObservabilityComprehensive:
             messages = [{"role": "user", "content": "Performance test"}]
 
             # Test without observability
-            with patch("packages.metrics_core.observability.log_llm_interaction", side_effect=ImportError):
+            with patch(
+                "packages.metrics_core.observability.log_llm_interaction", side_effect=ImportError
+            ):
                 start_time = time.time()
                 for _ in range(10):
                     chat("test-model", messages)
@@ -227,7 +242,9 @@ class TestObservabilityComprehensive:
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     start_time = time.time()
                     for _ in range(10):
                         chat("test-model", messages)
@@ -238,7 +255,9 @@ class TestObservabilityComprehensive:
             overhead_per_call = overhead / 10
 
             # Should be minimal overhead
-            assert overhead_per_call < 0.1, f"Observability overhead too high: {overhead_per_call:.3f}s per call"
+            assert (
+                overhead_per_call < 0.1
+            ), f"Observability overhead too high: {overhead_per_call:.3f}s per call"
 
             print(f"✅ Observability overhead acceptable: {overhead_per_call:.4f}s per call")
 
@@ -247,7 +266,7 @@ class TestObservabilityComprehensive:
         test_scenarios = [
             ("simulation", {"SENTRIES_SIMULATION_MODE": "true"}, None),
             ("api", {"GROQ_API_KEY": "test-key"}, "sentries.chat.chat_with_groq"),
-            ("local", {}, "sentries.chat.chat_with_ollama")
+            ("local", {}, "sentries.chat.chat_with_ollama"),
         ]
 
         for mode_name, env_vars, mock_target in test_scenarios:
@@ -256,18 +275,19 @@ class TestObservabilityComprehensive:
                 mock_analyze = MagicMock(return_value={"pii_spans": []})
 
                 mock_context = (
-                    patch(mock_target, return_value="Test response")
-                    if mock_target else MagicMock()
+                    patch(mock_target, return_value="Test response") if mock_target else MagicMock()
                 )
 
                 with mock_context:
                     with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                        with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                        with patch(
+                            "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                        ):
                             messages = [
                                 {"role": "system", "content": "System prompt"},
                                 {"role": "user", "content": "User message 1"},
                                 {"role": "assistant", "content": "Assistant response"},
-                                {"role": "user", "content": "User message 2"}
+                                {"role": "user", "content": "User message 2"},
                             ]
 
                             chat("test-model", messages, temperature=0.8, max_tokens=500)
@@ -277,9 +297,16 @@ class TestObservabilityComprehensive:
                             metadata = mock_log.call_args[1]["metadata"]
 
                             required_fields = [
-                                "mode", "model", "temperature", "max_tokens",
-                                "system_messages", "user_messages", "total_messages",
-                                "is_simulation", "is_api", "is_local"
+                                "mode",
+                                "model",
+                                "temperature",
+                                "max_tokens",
+                                "system_messages",
+                                "user_messages",
+                                "total_messages",
+                                "is_simulation",
+                                "is_api",
+                                "is_local",
                             ]
 
                             for field in required_fields:
@@ -296,7 +323,9 @@ class TestObservabilityComprehensive:
                             assert metadata[f"is_{mode_name}"] is True
 
                             # Other modes should be False
-                            other_modes = [m for m in ["simulation", "api", "local"] if m != mode_name]
+                            other_modes = [
+                                m for m in ["simulation", "api", "local"] if m != mode_name
+                            ]
                             for other_mode in other_modes:
                                 assert metadata[f"is_{other_mode}"] is False
 
@@ -316,7 +345,9 @@ class TestObservabilityComprehensive:
             def make_request(thread_id: int) -> None:
                 try:
                     with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                        with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                        with patch(
+                            "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                        ):
                             messages = [{"role": "user", "content": f"Thread {thread_id} request"}]
                             response = chat(f"model-{thread_id}", messages)
                             results.append((thread_id, response))
@@ -358,7 +389,9 @@ class TestObservabilityComprehensive:
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     # Test old function
                     messages = [{"role": "user", "content": "Backward compatibility test"}]
                     response1 = chat_with_observability("test-model", messages)

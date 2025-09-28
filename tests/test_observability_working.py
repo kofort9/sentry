@@ -30,7 +30,9 @@ class TestObservabilityWorking:
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     messages = [{"role": "user", "content": "Hello"}]
                     chat("test-model", messages)
 
@@ -58,11 +60,7 @@ class TestObservabilityWorking:
             obs.log_llm_interaction(
                 prompt="Test prompt",
                 response="Test response",
-                metadata={
-                    "mode": "simulation",
-                    "model": "test-model",
-                    "temperature": 0.5
-                }
+                metadata={"mode": "simulation", "model": "test-model", "temperature": 0.5},
             )
 
             # Check that event was stored
@@ -126,13 +124,14 @@ class TestObservabilityWorking:
                     mock_target = None
 
                 mock_context = (
-                    patch(mock_target, return_value="Test response")
-                    if mock_target else MagicMock()
+                    patch(mock_target, return_value="Test response") if mock_target else MagicMock()
                 )
 
                 with mock_context:
                     with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                        with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                        with patch(
+                            "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                        ):
                             messages = [{"role": "user", "content": "Hello"}]
                             chat("test-model", messages)
 
@@ -150,7 +149,10 @@ class TestObservabilityWorking:
             def mock_import_error(*args, **kwargs):
                 raise ImportError("Observability not available")
 
-            with patch("packages.metrics_core.observability.log_llm_interaction", side_effect=mock_import_error):
+            with patch(
+                "packages.metrics_core.observability.log_llm_interaction",
+                side_effect=mock_import_error,
+            ):
                 messages = [{"role": "user", "content": "Hello"}]
                 chat("test-model", messages)
 
@@ -168,7 +170,9 @@ class TestObservabilityWorking:
             messages = [{"role": "user", "content": "Performance test"}]
 
             # Test without observability
-            with patch("packages.metrics_core.observability.log_llm_interaction", side_effect=ImportError):
+            with patch(
+                "packages.metrics_core.observability.log_llm_interaction", side_effect=ImportError
+            ):
                 start_time = time.time()
                 for _ in range(5):
                     chat("test-model", messages)
@@ -179,7 +183,9 @@ class TestObservabilityWorking:
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     start_time = time.time()
                     for _ in range(5):
                         chat("test-model", messages)
@@ -235,7 +241,9 @@ class TestObservabilityWorking:
             mock_analyze = MagicMock(return_value={"pii_spans": []})
 
             with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                with patch(
+                    "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                ):
                     messages = [{"role": "user", "content": "Backward compatibility test"}]
                     response = chat_with_observability("test-model", messages)
 
@@ -259,7 +267,9 @@ class TestObservabilityWorking:
             def make_request(thread_id: int) -> None:
                 try:
                     with patch("packages.metrics_core.observability.log_llm_interaction", mock_log):
-                        with patch("packages.metrics_core.observability.analyze_text_for_pii", mock_analyze):
+                        with patch(
+                            "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
+                        ):
                             messages = [{"role": "user", "content": f"Thread {thread_id}"}]
                             chat(f"model-{thread_id}", messages)
                             results.append((thread_id, response))

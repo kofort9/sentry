@@ -25,12 +25,12 @@ def generate_mock_response(messages: List[Dict[str, str]], model: str) -> str:
     """Generate a deterministic mock response based on the input."""
     # Handle malformed messages gracefully
     try:
-        message_text = " ".join([
-            msg.get("content", "") for msg in messages if msg.get("content")
-        ])
+        message_text = " ".join([msg.get("content", "") for msg in messages if msg.get("content")])
         if not message_text:
-            return ("I understand you need help, but I didn't receive a clear message. "
-                    "Please provide more details.")
+            return (
+                "I understand you need help, but I didn't receive a clear message. "
+                "Please provide more details."
+            )
 
         # Hash is used for potential future deterministic variations
         hashlib.md5(message_text.encode()).hexdigest()

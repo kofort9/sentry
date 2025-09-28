@@ -190,7 +190,10 @@ def test_example():
                 except Exception as e:
                     # Errors should be handled gracefully
                     error_msg = str(e).lower()
-                    assert any(keyword in error_msg for keyword in ["simulation", "mock", "content", "message", "format"])
+                    assert any(
+                        keyword in error_msg
+                        for keyword in ["simulation", "mock", "content", "message", "format"]
+                    )
 
             print("✅ Error handling in CI working correctly")
 

@@ -101,11 +101,14 @@ class TestObservabilityIntegration:
 
                 mock_context = (
                     patch(mock_target, return_value="Test response")
-                    if mock_target else patch("builtins.open", MagicMock())
+                    if mock_target
+                    else patch("builtins.open", MagicMock())
                 )
 
                 with mock_context:
-                    with patch("packages.metrics_core.observability.analyze_text_for_pii") as mock_pii:
+                    with patch(
+                        "packages.metrics_core.observability.analyze_text_for_pii"
+                    ) as mock_pii:
                         mock_pii.return_value = {"pii_spans": []}
 
                         messages = [{"role": "user", "content": "Hello"}]
@@ -133,9 +136,16 @@ class TestObservabilityIntegration:
                 metadata = call_args[1]["metadata"]
 
                 expected_keys = [
-                    "model", "mode", "is_simulation", "is_api", "is_local",
-                    "system_messages", "user_messages", "total_messages",
-                    "temperature", "max_tokens"
+                    "model",
+                    "mode",
+                    "is_simulation",
+                    "is_api",
+                    "is_local",
+                    "system_messages",
+                    "user_messages",
+                    "total_messages",
+                    "temperature",
+                    "max_tokens",
                 ]
 
                 for key in expected_keys:
@@ -202,10 +212,16 @@ class TestObservabilityIntegration:
                 mocks = []
                 if expected_mode == "api":
                     mocks.append(patch("sentries.chat.chat_with_groq", return_value="API response"))
-                    mocks.append(patch("sentries.chat.chat_with_openai", return_value="API response"))
-                    mocks.append(patch("sentries.chat.chat_with_anthropic", return_value="API response"))
+                    mocks.append(
+                        patch("sentries.chat.chat_with_openai", return_value="API response")
+                    )
+                    mocks.append(
+                        patch("sentries.chat.chat_with_anthropic", return_value="API response")
+                    )
                 elif expected_mode == "local":
-                    mocks.append(patch("sentries.chat.chat_with_ollama", return_value="Local response"))
+                    mocks.append(
+                        patch("sentries.chat.chat_with_ollama", return_value="Local response")
+                    )
 
                 with patch("packages.metrics_core.observability.log_llm_interaction") as mock_log:
                     for mock in mocks:
@@ -218,7 +234,9 @@ class TestObservabilityIntegration:
                         # Verify mode detection
                         call_args = mock_log.call_args
                         metadata = call_args[1]["metadata"]
-                        assert metadata["mode"] == expected_mode, f"Expected {expected_mode}, got {metadata['mode']}"
+                        assert (
+                            metadata["mode"] == expected_mode
+                        ), f"Expected {expected_mode}, got {metadata['mode']}"
 
                     finally:
                         for mock in mocks:

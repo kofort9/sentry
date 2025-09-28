@@ -26,7 +26,7 @@ class PIIDetectionResult:
 
     def __post_init__(self):
         """Calculate derived metrics."""
-        if not hasattr(self, 'total_pii_chars') or self.total_pii_chars is None:
+        if not hasattr(self, "total_pii_chars") or self.total_pii_chars is None:
             self.total_pii_chars = sum(span.end - span.start for span in self.pii_spans)
 
 
@@ -179,7 +179,7 @@ def detect_all_pii(text: str) -> PIIDetectionResult:
     return PIIDetectionResult(
         pii_spans=all_spans,
         total_pii_chars=total_pii_chars,
-        leakage_rate=0.0  # Will be calculated later if needed
+        leakage_rate=0.0,  # Will be calculated later if needed
     )
 
 

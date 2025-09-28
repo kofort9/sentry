@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sentries.chat import chat, has_api_key, is_simulation_mode
+
 # from sentries.testsentry import main as testsentry_main  # Not used in current tests
 
 
