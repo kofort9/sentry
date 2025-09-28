@@ -5,8 +5,7 @@ from typing import Dict, List, Literal, Tuple
 import sentencepiece as spm
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
-from tokenizers.pre_tokenizers import ByteLevelPreTokenizer
-from tokenizers.processors import ByteLevelProcessing
+from tokenizers import pre_tokenizers, processors
 from tokenizers.trainers import BpeTrainer
 
 
@@ -24,10 +23,10 @@ def build_bpe_tokenizer(vocab_size: int = 32000) -> Tokenizer:
     tokenizer = Tokenizer(BPE(unk_token="<unk>"))
 
     # Add pre-tokenizer
-    tokenizer.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=True)
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
 
     # Add post-processor
-    tokenizer.post_processor = ByteLevelProcessing(trim_offsets=True)
+    tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
 
     # Create trainer
     trainer = BpeTrainer(

@@ -37,21 +37,67 @@ def chat(
     **kwargs: Any,
 ) -> str:
     """Chat with an LLM using the specified model and messages."""
+    
+    # Import observability here to avoid circular imports
+    try:
+        from packages.metrics_core.observability import (
+            analyze_text_for_pii,
+            log_llm_interaction,
+        )
+        observability_available = True
+    except ImportError:
+        observability_available = False
 
-    # Check for simulation mode first
-    if is_simulation_mode():
+    # Determine which mode we're using
+    mode = "simulation" if is_simulation_mode() else "api" if has_api_key() else "local"
+    
+    # Extract prompt for observability
+    user_messages = [msg for msg in messages if msg.get("role") == "user"]
+    prompt = "\n".join([msg["content"] for msg in user_messages])
+    
+    logger.info(f"🤖 Using {mode} mode with model: {model}")
+    if observability_available:
+        logger.info("📊 Observability enabled - logging LLM interaction")
+
+    # Make the actual LLM call based on mode
+    if mode == "simulation":
         from .chat_simulation import chat_simulation
+        response = chat_simulation(model, messages, temperature, max_tokens, **kwargs)
+    elif mode == "api":
+        response = chat_with_api(model, messages, temperature, max_tokens, **kwargs)
+    else:  # local mode
+        response = chat_with_ollama(model, messages, temperature, max_tokens, **kwargs)
 
-        return chat_simulation(model, messages, temperature, max_tokens, **kwargs)
+    # Log the interaction for observability
+    if observability_available:
+        system_messages = [msg for msg in messages if msg.get("role") == "system"]
+        
+        log_llm_interaction(
+            prompt=prompt,
+            response=response,
+            service="testsentry",
+            release="dev",
+            metadata={
+                "model": model,
+                "mode": mode,  # Track which mode was used
+                "system_messages": len(system_messages),
+                "user_messages": len(user_messages),
+                "total_messages": len(messages),
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+        )
 
-    # Check for API key mode
-    if has_api_key():
-        logger.info(f"🔑 Using API key mode with model: {model}")
-        return chat_with_api(model, messages, temperature, max_tokens, **kwargs)
+        # Analyze response for PII
+        pii_analysis = analyze_text_for_pii(response)
+        if pii_analysis.get("pii_spans"):
+            logger.warning(
+                f"⚠️  PII detected in LLM response: {len(pii_analysis['pii_spans'])} spans"
+            )
+        else:
+            logger.info("✅ No PII detected in LLM response")
 
-    # Default to local LLM mode
-    logger.info(f"🤖 Using local LLM mode with model: {model}")
-    return chat_with_ollama(model, messages, temperature, max_tokens, **kwargs)
+    return response
 
 
 def chat_with_api(

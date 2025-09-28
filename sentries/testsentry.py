@@ -61,10 +61,12 @@ from .smart_prompts import SmartPrompts
 logger = get_logger(__name__)
 
 
+# Note: chat_with_observability is now integrated directly into the chat() function
+# This maintains backward compatibility while using the new integrated approach
 def chat_with_observability(model: str, messages: list, **kwargs) -> str:
     """
-    Wrapper around chat function that adds observability logging.
-
+    Backward compatibility wrapper - observability is now integrated into chat().
+    
     Args:
         model: LLM model to use
         messages: List of message dictionaries
@@ -73,46 +75,7 @@ def chat_with_observability(model: str, messages: list, **kwargs) -> str:
     Returns:
         LLM response
     """
-    # Extract prompt and response for observability
-    user_messages = [msg for msg in messages if msg.get("role") == "user"]
-    system_messages = [msg for msg in messages if msg.get("role") == "system"]
-
-    # Combine all user messages as the "prompt"
-    prompt = "\n".join([msg["content"] for msg in user_messages])
-
-    # Log the interaction before making the call
-    logger.info(f"🤖 Calling LLM: {model}")
-    if OBSERVABILITY_AVAILABLE:
-        logger.info("📊 Observability enabled - logging LLM interaction")
-
-    # Make the actual LLM call
-    response = chat(model=model, messages=messages, **kwargs)
-
-    # Log the interaction for observability
-    if OBSERVABILITY_AVAILABLE:
-        log_llm_interaction(
-            prompt=prompt,
-            response=response,
-            service="testsentry",
-            release="dev",
-            metadata={
-                "model": model,
-                "system_messages": len(system_messages),
-                "user_messages": len(user_messages),
-                "total_messages": len(messages),
-            },
-        )
-
-        # Analyze response for PII
-        pii_analysis = analyze_text_for_pii(response)
-        if pii_analysis.get("pii_spans"):
-            logger.warning(
-                f"⚠️  PII detected in LLM response: {len(pii_analysis['pii_spans'])} spans"
-            )
-        else:
-            logger.info("✅ No PII detected in LLM response")
-
-    return response
+    return chat(model=model, messages=messages, **kwargs)
 
 
 def discover_test_failures() -> Optional[str]:

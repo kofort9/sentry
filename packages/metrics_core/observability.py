@@ -52,7 +52,7 @@ class TestSentryObservability:
         if metadata is None:
             metadata = {}
 
-        # Create event
+        # Create event with enhanced metadata for three-mode system
         event = Event(
             message=f"PROMPT: {prompt}\nRESPONSE: {response}",
             service=service,
@@ -62,6 +62,10 @@ class TestSentryObservability:
                 "prompt_length": len(prompt),
                 "response_length": len(response),
                 "total_length": len(prompt) + len(response),
+                "mode": metadata.get("mode", "unknown"),  # Track LLM mode
+                "is_simulation": metadata.get("mode") == "simulation",
+                "is_api": metadata.get("mode") == "api", 
+                "is_local": metadata.get("mode") == "local",
                 **metadata,
             },
         )
