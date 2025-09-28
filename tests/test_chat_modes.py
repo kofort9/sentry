@@ -165,11 +165,12 @@ class TestErrorHandling:
 
     def test_api_mode_error_handling(self) -> None:
         """Test that API mode handles errors gracefully."""
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True):
             with patch("sentries.chat.chat_with_openai") as mock_api:
                 mock_api.side_effect = Exception("API Error")
 
-                with pytest.raises(Exception, match="API Error"):
+                # Should exhaust all fallbacks and raise "No valid API key found"
+                with pytest.raises(ValueError, match="No valid API key found"):
                     chat("gpt-4", [{"role": "user", "content": "Hello"}])
 
     def test_local_llm_mode_error_handling(self) -> None:

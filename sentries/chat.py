@@ -61,20 +61,30 @@ def chat_with_api(
     max_tokens: int = 500,
     **kwargs: Any,
 ) -> str:
-    """Chat using API keys (OpenAI, Anthropic, or Groq)."""
-
+    """Chat using API keys (OpenAI, Anthropic, or Groq) with fallback."""
+    
     # Try Groq first (free tier available)
     if os.getenv("GROQ_API_KEY"):
-        return chat_with_groq(model, messages, temperature, max_tokens, **kwargs)
-
+        try:
+            return chat_with_groq(model, messages, temperature, max_tokens, **kwargs)
+        except Exception as e:
+            logger.warning(f"Groq API failed: {e}, trying fallback...")
+    
     # Try OpenAI
     if os.getenv("OPENAI_API_KEY"):
-        return chat_with_openai(model, messages, temperature, max_tokens, **kwargs)
-
+        try:
+            return chat_with_openai(model, messages, temperature, max_tokens, **kwargs)
+        except Exception as e:
+            logger.warning(f"OpenAI API failed: {e}, trying fallback...")
+    
     # Try Anthropic
     if os.getenv("ANTHROPIC_API_KEY"):
-        return chat_with_anthropic(model, messages, temperature, max_tokens, **kwargs)
-
+        try:
+            return chat_with_anthropic(model, messages, temperature, max_tokens, **kwargs)
+        except Exception as e:
+            logger.warning(f"Anthropic API failed: {e}, no more fallbacks available")
+            raise
+    
     raise ValueError("No valid API key found")
 
 
