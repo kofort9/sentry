@@ -376,3 +376,257 @@ MIT License
 ---
 
 **⚠️ IMPORTANT**: This is a **proof-of-concept** that has been **tabled**. It demonstrates technical feasibility but is **not suitable for production use**. Use at your own risk and only for evaluation purposes.
+
+## 🔄 **Three-Mode LLM System**
+
+Sentries now supports **three different LLM modes** to accommodate different use cases and constraints:
+
+### **Mode 1: 🎭 Simulation Mode (Free, Public Repo Compatible)**
+- **Cost**: $0 (completely free)
+- **Requirements**: Public repository + GitHub Actions
+- **Use Case**: Demonstration, CI/CD, public repositories
+- **Setup**: Automatic (no additional setup needed)
+- **Results**: Deterministic mock responses that simulate real LLM behavior
+
+```bash
+# Enable simulation mode
+export SENTRIES_SIMULATION_MODE=true
+python -m sentries.testsentry
+```
+
+### **Mode 2: 🤖 Local LLM Mode (Free, Private Repo Required)**
+- **Cost**: $0 (uses local Ollama)
+- **Requirements**: Private repository + self-hosted runner + Ollama
+- **Use Case**: Real LLM testing, private development
+- **Setup**: Install Ollama + set up self-hosted runner
+- **Results**: Real LLM responses using local models
+
+```bash
+# Install Ollama and models
+ollama pull llama3.1
+ollama pull deepseek-coder
+
+# Run with local LLM
+python -m sentries.testsentry
+```
+
+### **Mode 3: ☁️ API Mode (Paid, Public Repo Compatible)**
+- **Cost**: Pay per API call (OpenAI/Anthropic/Groq pricing)
+- **Requirements**: API key + public/private repository
+- **Use Case**: Production use, advanced LLM capabilities
+- **Setup**: Get API key + set environment variable
+- **Results**: Real LLM responses using cloud APIs
+
+```bash
+# Set up API key (choose one)
+export GROQ_API_KEY="your-groq-key"        # Free tier available
+export OPENAI_API_KEY="your-openai-key"    # Paid
+export ANTHROPIC_API_KEY="your-anthropic-key"  # Paid
+
+# Run with API
+python -m sentries.testsentry
+```
+
+## 🔧 **Configuration**
+
+### **Environment Variables**
+
+| Variable | Description | Default | Mode |
+|----------|-------------|---------|------|
+| `SENTRIES_SIMULATION_MODE` | Force simulation mode | `false` | Simulation |
+| `CI` | Auto-enable simulation in CI | `false` | Simulation |
+| `GROQ_API_KEY` | Groq API key (free tier) | `None` | API |
+| `OPENAI_API_KEY` | OpenAI API key | `None` | API |
+| `ANTHROPIC_API_KEY` | Anthropic API key | `None` | API |
+| `LLM_BASE` | Ollama server URL | `http://localhost:11434` | Local LLM |
+
+### **Model Configuration**
+
+```python
+# For API mode
+MODEL_PLAN = "gpt-4"                    # OpenAI
+MODEL_PLAN = "claude-3-sonnet"          # Anthropic  
+MODEL_PLAN = "llama3-8b-8192"           # Groq (free tier)
+
+# For local mode
+MODEL_PLAN = "llama3.1"                 # Ollama
+MODEL_PATCH = "deepseek-coder"          # Ollama
+```
+
+## 🚀 **Quick Start Examples**
+
+### **For Public Repository (Simulation)**
+```bash
+git clone https://github.com/kofort9/sentry.git
+cd sentries
+pip install -e .
+export SENTRIES_SIMULATION_MODE=true
+python -m sentries.testsentry
+```
+
+### **For Private Repository (Local LLM)**
+```bash
+git clone <your-private-repo>
+cd sentries
+pip install -e .
+ollama pull llama3.1
+ollama pull deepseek-coder
+python -m sentries.testsentry
+```
+
+### **For API Usage (Any Repository)**
+```bash
+git clone https://github.com/kofort9/sentry.git
+cd sentries
+pip install -e .
+export GROQ_API_KEY="your-free-key"  # Get from https://console.groq.com
+python -m sentries.testsentry
+```
+
+## 💡 **Why Three Modes?**
+
+- **Simulation Mode**: Perfect for public repositories, CI/CD, and demonstrations
+- **Local LLM Mode**: Free real testing, but requires private repository due to GitHub's security policy
+- **API Mode**: Most flexible, works anywhere, supports free (Groq) and paid options
+
+**Mode Priority**: Simulation > API > Local LLM (automatic detection)
+
+## 🧪 **Testing**
+
+Run the comprehensive test suite:
+
+```bash
+# Test all three modes
+pytest tests/test_chat_modes.py -v
+
+# Test pipeline integration
+pytest tests/test_pipeline_integration.py -v
+
+# Test CI integration
+pytest tests/test_ci_integration.py -v
+
+# Test specific mode
+pytest tests/test_chat_modes.py::TestSimulationMode -v
+```
+
+## 🔄 **Mode Detection Logic**
+
+The system automatically detects which mode to use:
+
+1. **Simulation Mode** (highest priority)
+   - `SENTRIES_SIMULATION_MODE=true` OR
+   - `CI=true` (GitHub Actions, etc.)
+
+2. **API Mode** (second priority)
+   - Any of: `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` set
+
+3. **Local LLM Mode** (fallback)
+   - No simulation mode, no API keys
+   - Requires Ollama running locally
+
+## 🛠️ **Troubleshooting**
+
+### **Common Issues**
+
+#### **"Stuck waiting for self-hosted runner"**
+- **Problem**: GitHub Actions waiting for self-hosted runner
+- **Solution**: Remove `test-llm` label/tag from PR, or use simulation mode
+- **Why**: Public repos can't use self-hosted runners for security reasons
+
+#### **"API key not working"**
+- **Problem**: API calls failing
+- **Solution**: Check API key format and permissions
+- **Groq**: Get free key at https://console.groq.com
+- **OpenAI**: Requires paid account
+- **Anthropic**: Requires paid account
+
+#### **"Ollama connection failed"**
+- **Problem**: Can't connect to local Ollama
+- **Solution**: 
+  ```bash
+  # Start Ollama
+  ollama serve
+  
+  # Pull required models
+  ollama pull llama3.1
+  ollama pull deepseek-coder
+  ```
+
+#### **"Simulation responses not realistic"**
+- **Problem**: Mock responses too simple
+- **Solution**: This is expected - simulation mode provides basic responses for testing
+- **Alternative**: Use API mode for better responses
+
+### **Environment Debugging**
+
+```bash
+# Check which mode will be used
+python -c "
+from sentries.chat import is_simulation_mode, has_api_key
+print(f'Simulation mode: {is_simulation_mode()}')
+print(f'API key available: {has_api_key()}')
+print('Mode priority: Simulation > API > Local LLM')
+"
+```
+
+### **Performance Expectations**
+
+| Mode | Response Time | Cost | Quality |
+|------|---------------|------|---------|
+| Simulation | <0.1s | Free | Basic |
+| API (Groq) | 1-3s | Free tier | Good |
+| API (OpenAI/Anthropic) | 1-5s | Paid | Excellent |
+| Local LLM | 5-30s | Free | Good |
+
+## 📋 **GitHub Actions Integration**
+
+### **Automatic Simulation Mode**
+- Public repositories automatically use simulation mode in CI
+- No setup required - works out of the box
+- Deterministic results for consistent testing
+
+### **Optional LLM Testing**
+Add to PR title, body, or labels to enable LLM tests:
+- `[test-llm]` in title or body
+- `test-llm` label on PR
+- Manual workflow trigger with `run_llm_tests=true`
+
+**Note**: LLM tests require self-hosted runner (private repos only)
+
+### **Workflow Configuration**
+```yaml
+# .github/workflows/test-sentries.yml
+- name: Test with Simulation Mode
+  env:
+    SENTRIES_SIMULATION_MODE: true
+  run: |
+    python -m sentries.testsentry
+```
+
+## 🔐 **Security Considerations**
+
+### **API Keys**
+- Store as GitHub Secrets, never in code
+- Use environment variables only
+- Groq offers free tier for testing
+
+### **Self-Hosted Runners**
+- Only work with private repositories
+- Public repos use GitHub-hosted runners + simulation mode
+- This is a GitHub security policy, not a limitation of Sentries
+
+### **Data Privacy**
+- Simulation mode: No data sent anywhere
+- API mode: Data sent to API provider
+- Local LLM mode: All processing local
+
+## 📊 **Observability Features**
+
+The system includes comprehensive observability:
+- **Real-time metrics** collection during LLM operations
+- **PII detection** and masking for privacy
+- **Tokenization analysis** and drift detection
+- **Deterministic reports** generated in CI
+- **Interactive dashboard** (optional Streamlit app)
+
+See the observability documentation for details on metrics and monitoring.
