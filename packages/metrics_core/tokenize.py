@@ -3,9 +3,8 @@
 from typing import Dict, List, Literal, Tuple
 
 import sentencepiece as spm
-from tokenizers import Tokenizer
+from tokenizers import Tokenizer, pre_tokenizers, processors
 from tokenizers.models import BPE
-from tokenizers import pre_tokenizers, processors
 from tokenizers.trainers import BpeTrainer
 
 

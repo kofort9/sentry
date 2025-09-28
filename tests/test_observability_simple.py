@@ -27,7 +27,7 @@ class TestObservabilitySimple:
                     "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
                 ):
                     messages = [{"role": "user", "content": "Hello"}]
-                    response = chat("test-model", messages)
+                    chat("test-model", messages)
 
                     assert isinstance(response, str)
                     assert len(response) > 0
@@ -53,7 +53,7 @@ class TestObservabilitySimple:
 
             with patch("builtins.__import__", side_effect=mock_import):
                 messages = [{"role": "user", "content": "Hello"}]
-                response = chat("test-model", messages)
+                chat("test-model", messages)
 
                 assert isinstance(response, str)
                 assert len(response) > 0
@@ -92,7 +92,7 @@ class TestObservabilitySimple:
                         ):
                             messages = [{"role": "user", "content": "Hello"}]
                             chat("test-model", messages)
-                            
+
                             # Verify observability was called with correct mode
                             mock_log.assert_called_once()
                             call_kwargs = mock_log.call_args[1]
@@ -128,7 +128,7 @@ class TestObservabilitySimple:
                     ]
 
                     chat("test-model", messages, temperature=0.7, max_tokens=200)
-                    
+
                     # Verify metadata completeness
                     call_kwargs = mock_log.call_args[1]
                     metadata = call_kwargs["metadata"]
@@ -197,7 +197,7 @@ class TestObservabilitySimple:
                         ):
                             messages = [{"role": "user", "content": "Hello"}]
                             chat("test-model", messages)
-                            
+
                             # Verify PII analysis was called
                             mock_analyze.assert_called_once()
                             analyzed_text = mock_analyze.call_args[0][0]
@@ -221,7 +221,7 @@ class TestObservabilitySimple:
                     with patch("sentries.chat.logger") as mock_logger:
                         messages = [{"role": "user", "content": "Hello"}]
                         chat("test-model", messages)
-                        
+
                         # Verify logging calls
                         mock_logger.info.assert_any_call(
                             "🤖 Using simulation mode with model: test-model"
@@ -248,7 +248,7 @@ class TestObservabilitySimple:
                     messages = [{"role": "user", "content": "Hello"}]
 
                     # Should still work despite observability errors
-                    response = chat("test-model", messages)
+                    chat("test-model", messages)
 
                     assert isinstance(response, str)
                     assert len(response) > 0

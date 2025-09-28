@@ -66,7 +66,7 @@ logger = get_logger(__name__)
 def chat_with_observability(model: str, messages: list, **kwargs) -> str:
     """
     Backward compatibility wrapper - observability is now integrated into chat().
-    
+
     Args:
         model: LLM model to use
         messages: List of message dictionaries

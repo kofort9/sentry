@@ -74,7 +74,7 @@ def chat(
     if observability_available:
         try:
             system_messages = [msg for msg in messages if msg.get("role") == "system"]
-            
+
             log_llm_interaction(
                 prompt=prompt,
                 response=response,
@@ -99,7 +99,7 @@ def chat(
                 )
             else:
                 logger.info("✅ No PII detected in LLM response")
-                
+
         except Exception as e:
             logger.warning(f"⚠️  Observability logging failed: {e}")
             # Continue execution - don't let observability errors break chat

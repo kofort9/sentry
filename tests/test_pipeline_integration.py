@@ -343,9 +343,9 @@ class TestErrorHandling:
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True):
             with patch("sentries.chat.chat_with_openai") as mock_api:
                 mock_api.side_effect = Exception("API Error")
-                
+
                 messages = [{"role": "user", "content": "Hello"}]
-                
+
                 with pytest.raises(ValueError, match="No valid API key found"):
                     chat("gpt-4", messages)
 
