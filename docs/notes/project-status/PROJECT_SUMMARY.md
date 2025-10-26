@@ -1,7 +1,7 @@
 # Sentries Project Summary
 
-**Status**: POC Complete - Project Tabled  
-**Date**: December 2024  
+**Status**: POC Complete - Project Tabled
+**Date**: December 2024
 **Reason**: Resource limitations and complexity constraints
 
 ## 🎯 What Was Built
@@ -39,7 +39,7 @@ A proof-of-concept system that uses local LLMs (Ollama) to automatically fix fai
 ### Working Components
 ```python
 sentries/patch_engine.py          # ✅ Robust patch generation
-sentries/intelligent_analysis.py  # ✅ Smart failure classification  
+sentries/intelligent_analysis.py  # ✅ Smart failure classification
 sentries/git_utils.py             # ✅ Git operations and PR management
 sentries/runner_common.py         # ✅ Shared utilities and constants
 sentries/testsentry.py            # 🟡 Basic functionality works
@@ -98,6 +98,6 @@ The Sentries project successfully demonstrated the technical feasibility of usin
 
 ---
 
-**Status**: Archived POC - Not suitable for production use  
-**Use Case**: Technical reference and future research  
+**Status**: Archived POC - Not suitable for production use
+**Use Case**: Technical reference and future research
 **Next Steps**: Revisit when technology improves or resource constraints are reduced

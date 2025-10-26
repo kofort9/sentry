@@ -59,10 +59,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install Sentries
         run: pip install -e .
-      
+
       - name: Test with Simulation Mode
         env:
           SENTRIES_SIMULATION_MODE: true
@@ -349,7 +349,7 @@ def debug_mode_detection():
     print(f"  is_simulation_mode(): {is_simulation_mode()}")
     print(f"  has_api_key(): {has_api_key()}")
     print()
-    
+
     if is_simulation_mode():
         print("  ✅ Will use: SIMULATION MODE")
     elif has_api_key():
@@ -368,7 +368,7 @@ from sentries.chat import chat
 def test_api_key(provider, api_key, model):
     """Test if an API key works."""
     print(f"Testing {provider} API key...")
-    
+
     # Set the API key
     if provider == "groq":
         os.environ['GROQ_API_KEY'] = api_key
@@ -376,10 +376,10 @@ def test_api_key(provider, api_key, model):
         os.environ['OPENAI_API_KEY'] = api_key
     elif provider == "anthropic":
         os.environ['ANTHROPIC_API_KEY'] = api_key
-    
+
     # Clear simulation mode
     os.environ.pop('SENTRIES_SIMULATION_MODE', None)
-    
+
     try:
         messages = [{"role": "user", "content": "Hello, this is a test"}]
         response = chat(model, messages)
@@ -406,22 +406,22 @@ import os
 def test_ollama_connection():
     """Test Ollama connection and available models."""
     base_url = os.getenv('LLM_BASE', 'http://localhost:11434')
-    
+
     try:
         # Test connection
         response = requests.get(f"{base_url}/api/tags", timeout=5)
         response.raise_for_status()
-        
+
         models = response.json().get('models', [])
         print(f"✅ Ollama connection successful!")
         print(f"  Base URL: {base_url}")
         print(f"  Available models: {len(models)}")
-        
+
         for model in models:
             print(f"    - {model.get('name', 'unknown')}")
-        
+
         return True
-        
+
     except requests.exceptions.ConnectionError:
         print(f"❌ Cannot connect to Ollama at {base_url}")
         print("  Make sure Ollama is running: ollama serve")
@@ -445,7 +445,7 @@ def performance_comparison():
     """Compare performance across all modes."""
     messages = [{"role": "user", "content": "Fix this test: assert 1 == 2"}]
     results = {}
-    
+
     # Test Simulation Mode
     print("Testing Simulation Mode...")
     os.environ['SENTRIES_SIMULATION_MODE'] = 'true'
@@ -454,12 +454,12 @@ def performance_comparison():
         response = chat("test-model", messages)
     simulation_time = (time.time() - start_time) / 10
     results['Simulation'] = simulation_time
-    
+
     # Test API Mode (mocked for speed)
     print("Testing API Mode (mocked)...")
     os.environ.pop('SENTRIES_SIMULATION_MODE', None)
     os.environ['OPENAI_API_KEY'] = 'test-key'
-    
+
     with patch('sentries.chat.chat_with_openai') as mock_api:
         mock_api.return_value = "Mocked API response"
         start_time = time.time()
@@ -467,11 +467,11 @@ def performance_comparison():
             response = chat("gpt-4", messages)
         api_time = (time.time() - start_time) / 10
         results['API (mocked)'] = api_time
-    
+
     # Test Local LLM Mode (mocked for speed)
     print("Testing Local LLM Mode (mocked)...")
     os.environ.pop('OPENAI_API_KEY', None)
-    
+
     with patch('sentries.chat.chat_with_ollama') as mock_ollama:
         mock_ollama.return_value = "Mocked Ollama response"
         start_time = time.time()
@@ -479,12 +479,12 @@ def performance_comparison():
             response = chat("llama3.1", messages)
         local_time = (time.time() - start_time) / 10
         results['Local LLM (mocked)'] = local_time
-    
+
     # Print results
     print("\\n📊 Performance Results:")
     for mode, avg_time in results.items():
         print(f"  {mode}: {avg_time:.4f}s average")
-    
+
     return results
 
 # performance_comparison()
@@ -545,21 +545,21 @@ class SentriesConfig:
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     ollama_base_url: str = "http://localhost:11434"
-    
+
     def apply(self):
         """Apply configuration to environment."""
         if self.simulation_mode:
             os.environ['SENTRIES_SIMULATION_MODE'] = 'true'
-        
+
         if self.groq_api_key:
             os.environ['GROQ_API_KEY'] = self.groq_api_key
-        
+
         if self.openai_api_key:
             os.environ['OPENAI_API_KEY'] = self.openai_api_key
-        
+
         if self.anthropic_api_key:
             os.environ['ANTHROPIC_API_KEY'] = self.anthropic_api_key
-        
+
         os.environ['LLM_BASE'] = self.ollama_base_url
 
 # Usage

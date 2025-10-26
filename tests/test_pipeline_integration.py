@@ -242,7 +242,7 @@ class TestLocalLLMPipeline:
                 {"role": "system", "content": "You are a helpful assistant"},
                 {"role": "user", "content": "Fix this test"},
             ]
-            response = chat("llama3.1", messages)
+            chat("llama3.1", messages)
 
             # Verify request was made correctly
             mock_post.assert_called_once()
@@ -413,7 +413,7 @@ class TestPerformance:
 
             start_time = time.time()
             for _ in range(10):
-                response = chat("test-model", messages)
+                chat("test-model", messages)
             end_time = time.time()
 
             avg_time = (end_time - start_time) / 10
@@ -431,19 +431,19 @@ class TestPerformance:
 
         # Simulation mode
         with patch.dict(os.environ, {"SENTRIES_SIMULATION_MODE": "true"}):
-            response1 = chat("test-model", messages)
+            chat("test-model", messages)
 
         # API mode (mocked)
         with patch("sentries.chat.chat_with_openai") as mock_openai:
             mock_openai.return_value = "API response"
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=True):
-                response2 = chat("gpt-4", messages)
+                chat("gpt-4", messages)
 
         # Local LLM mode (mocked)
         with patch("sentries.chat.chat_with_ollama") as mock_ollama:
             mock_ollama.return_value = "Local response"
             with patch.dict(os.environ, {}, clear=True):
-                response3 = chat("llama3.1", messages)
+                chat("llama3.1", messages)
 
         end_time = time.time()
         total_time = end_time - start_time

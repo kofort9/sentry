@@ -4,6 +4,7 @@ Working tests for observability integration that focus on actual functionality.
 
 import os
 import shutil
+import tempfile
 from unittest.mock import MagicMock, patch
 
 from sentries.chat import chat
@@ -34,7 +35,7 @@ class TestObservabilityWorking:
                     "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
                 ):
                     messages = [{"role": "user", "content": "Hello"}]
-                    chat("test-model", messages)
+                    response = chat("test-model", messages)
 
                     # Verify observability was called
                     assert mock_log.called
@@ -154,7 +155,7 @@ class TestObservabilityWorking:
                 side_effect=mock_import_error,
             ):
                 messages = [{"role": "user", "content": "Hello"}]
-                chat("test-model", messages)
+                response = chat("test-model", messages)
 
                 # Should still work
                 assert isinstance(response, str)
@@ -271,7 +272,7 @@ class TestObservabilityWorking:
                             "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
                         ):
                             messages = [{"role": "user", "content": f"Thread {thread_id}"}]
-                            chat(f"model-{thread_id}", messages)
+                            response = chat(f"model-{thread_id}", messages)
                             results.append((thread_id, response))
                 except Exception as e:
                     errors.append((thread_id, str(e)))

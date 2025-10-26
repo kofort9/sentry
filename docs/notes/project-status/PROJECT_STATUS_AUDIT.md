@@ -1,7 +1,7 @@
 # Sentries Project Status Audit
 
-**Date**: December 2024  
-**Status**: Project Tabled - POC Complete  
+**Date**: December 2024
+**Status**: Project Tabled - POC Complete
 **Reason**: Resource limitations make further development not worth pursuing at this time
 
 ## 🎯 Project Overview

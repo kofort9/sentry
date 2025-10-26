@@ -47,15 +47,15 @@ echo ""
 echo "4️⃣  Ollama Installation:"
 if command -v ollama &> /dev/null; then
     echo "   ✅ Ollama is installed"
-    
+
     # Check if Ollama service is running
     if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
         echo "   ✅ Ollama service is running"
-        
+
         # Check available models
         MODELS=$(ollama list 2>/dev/null | wc -l)
         echo "   📋 Available models: $((MODELS - 1))"
-        
+
         if [ "$MODELS" -gt 1 ]; then
             echo "   📝 Installed models:"
             ollama list | tail -n +2 | sed 's/^/      - /'

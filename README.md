@@ -15,7 +15,7 @@
 
 This project has been **tabled** due to resource limitations. It serves as a **proof-of-concept** demonstrating the technical feasibility of using local LLMs for automated test maintenance.
 
-**Current Status**: 
+**Current Status**:
 - ✅ **TestSentry**: Basic functionality works for simple test failures
 - ❌ **DocSentry**: Never fully implemented
 - 🟡 **Overall**: POC complete, not suitable for production use
@@ -156,7 +156,7 @@ sentries-cleanup --dry-run
 - ❌ Integration problems
 - ❌ Advanced pytest scenarios
 
-**Allowlist**: `tests/`  
+**Allowlist**: `tests/`
 **Limits**: ≤5 files, ≤200 lines changed
 
 ## 📚 DocSentry (POC Status: Not Implemented)
@@ -198,7 +198,7 @@ sentries-cleanup --dry-run
    ```bash
    # On macOS
    brew install ollama
-   
+
    # On Linux
    curl -fsSL https://ollama.ai/install.sh | sh
    ```
@@ -445,7 +445,7 @@ python -m sentries.testsentry
 ```python
 # For API mode
 MODEL_PLAN = "gpt-4"                    # OpenAI
-MODEL_PLAN = "claude-3-sonnet"          # Anthropic  
+MODEL_PLAN = "claude-3-sonnet"          # Anthropic
 MODEL_PLAN = "llama3-8b-8192"           # Groq (free tier)
 
 # For local mode
@@ -542,11 +542,11 @@ The system automatically detects which mode to use:
 
 #### **"Ollama connection failed"**
 - **Problem**: Can't connect to local Ollama
-- **Solution**: 
+- **Solution**:
   ```bash
   # Start Ollama
   ollama serve
-  
+
   # Pull required models
   ollama pull llama3.1
   ollama pull deepseek-coder
@@ -630,3 +630,30 @@ The system includes comprehensive observability:
 - **Interactive dashboard** (optional Streamlit app)
 
 See the observability documentation for details on metrics and monitoring.
+
+## 📝 **Session Notes / Future Ideas**
+
+### Current Architecture
+- Sequential topology for now: `Trigger → Ingest → Planner (LLM) → Patcher → Reviewer → stop`
+- Plan to add **ContextBuilder Sidecar** (non-LLM): ripgrep/ctags/AST + SQLite FTS; produce `top_k_context.json`
+- Current JIT context budget: smart extractor caps packs at ~6 KB (character budget) with AST-aware trimming
+- Tight token caps today: Planner `max_tokens=600` @ `temp=0.2`; Patcher `max_tokens=500` @ `temp=0.1`; reviewer deferred
+- JSON-only messages between agents; schema validation; fail-safe → open issue
+- Local-first via OpenAI-compatible endpoint (Ollama/llama.cpp); mock agents allowed
+
+### Design Philosophy
+- Resource-conscious approach with configurable complexity
+- Start simple, scale smart based on available compute
+- Framework supports both linear pipelines and complex multi-agent topologies
+- Graceful degradation when resources are constrained
+
+## 🛣️ **Roadmap**
+
+- [ ] **Framework generalization** for multi-domain workflows
+- [ ] **ContextBuilder sidecar** implementation
+- [ ] **Enhanced error recovery** and retry logic
+- [ ] **Production deployment** guidelines
+- [ ] **Performance optimization** and resource management
+- [ ] **Integration testing** and validation pipeline
+- [ ] **Documentation** and onboarding improvements
+- [ ] **Multi-domain examples** (DocSentry, CodeSentry, DataSentry)
