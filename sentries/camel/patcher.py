@@ -4,9 +4,9 @@ import datetime
 import json
 from typing import Any, Dict
 
+from ..runner_common import get_logger
 from .llm import SentryLLMWrapper
 from .tools import PatchGenerationTool, PatchValidationTool
-from ..runner_common import get_logger
 
 logger = get_logger(__name__)
 
@@ -94,22 +94,22 @@ VALIDATION PROCESS:
     ) -> Dict[str, Any]:
         """
         Phase 2: Enhanced validation with iterative refinement and file validation.
-        
+
         Args:
             plan_summary: Summary of the plan to implement
             context: Source code context
             max_attempts: Maximum validation attempts
-            
+
         Returns:
             Patch generation results with validation history
         """
-        import re
         import os
-        
+        import re
+
         # Extract file paths from context headers
         file_pattern = r"=== File: (.*?) ==="
         target_files = re.findall(file_pattern, context)
-        
+
         # Validate target files exist
         if target_files:
             missing_files = [f for f in target_files if not os.path.exists(f)]
@@ -122,14 +122,14 @@ VALIDATION PROCESS:
                     "unified_diff": "",
                     "validation_attempts": 0,
                 }
-            
+
             logger.info(f"✅ Validated {len(target_files)} target files exist: {target_files}")
-        
+
         validation_attempts = []
-        
+
         for attempt in range(max_attempts):
             logger.info(f"🔄 Validation attempt {attempt + 1}/{max_attempts}")
-            
+
             # Build context-aware prompt using previous attempts
             patching_prompt = self._build_contextual_prompt(
                 plan_summary, context, validation_attempts
@@ -142,23 +142,38 @@ VALIDATION PROCESS:
 
             # Log LLM interaction if logger is available
             if self.llm_logger:
-                self.llm_logger("patcher", "system", self.system_message, self.model_name,
-                               {"context": "patch_generation", "attempt": attempt + 1})
-                self.llm_logger("patcher", "user", patching_prompt, self.model_name,
-                               {"attempt": attempt + 1, "max_attempts": max_attempts})
+                self.llm_logger(
+                    "patcher",
+                    "system",
+                    self.system_message,
+                    self.model_name,
+                    {"context": "patch_generation", "attempt": attempt + 1},
+                )
+                self.llm_logger(
+                    "patcher",
+                    "user",
+                    patching_prompt,
+                    self.model_name,
+                    {"attempt": attempt + 1, "max_attempts": max_attempts},
+                )
 
             response = self.llm.generate(messages)
-            
+
             # Log LLM response
             if self.llm_logger:
-                self.llm_logger("patcher", "assistant", response, self.model_name,
-                               {"patch_phase": "generate_patch", "attempt": attempt + 1})
-            
+                self.llm_logger(
+                    "patcher",
+                    "assistant",
+                    response,
+                    self.model_name,
+                    {"patch_phase": "generate_patch", "attempt": attempt + 1},
+                )
+
             json_operations = self._extract_json_from_response(response)
 
             # Validate the operations
             validation_result = self.validation_tool.validate_operations(json_operations)
-            
+
             # Record this attempt
             attempt_record = {
                 "attempt": attempt + 1,
@@ -168,17 +183,20 @@ VALIDATION PROCESS:
                 "llm_response": response,
             }
             validation_attempts.append(attempt_record)
-            
+
             if validation_result.get("valid", False):
                 logger.info(f"✅ Validation successful on attempt {attempt + 1}")
                 break
             else:
-                logger.info(f"❌ Validation failed on attempt {attempt + 1}: {validation_result.get('issues', [])}")
+                issues = validation_result.get("issues", [])
+                logger.info(f"❌ Validation failed on attempt {attempt + 1}: {issues}")
                 if attempt == max_attempts - 1:
                     logger.warning("⚠️ Max validation attempts reached")
-        
+
         if not validation_attempts:
-            notification = "Validation failed before producing any JSON operations; skipping diff generation."
+            notification = (
+                "Validation failed before producing any JSON operations; skipping diff generation."
+            )
             logger.warning(notification)
             return {
                 "success": False,
@@ -216,9 +234,9 @@ VALIDATION PROCESS:
         interaction = {
             "timestamp": datetime.datetime.now().isoformat(),
             "input": {
-                "plan": plan_summary, 
+                "plan": plan_summary,
                 "context_size": len(context),
-                "validation_attempts_count": len(validation_attempts)
+                "validation_attempts_count": len(validation_attempts),
             },
             "validation_attempts": validation_attempts,
             "final_validation": final_validation,
@@ -244,24 +262,29 @@ VALIDATION PROCESS:
     ) -> str:
         """
         Build a context-aware prompt that learns from previous validation failures.
-        
+
         Args:
             plan_summary: The plan to implement
             context: Source code context
             previous_attempts: List of previous validation attempts
-            
+
         Returns:
             Enhanced prompt with validation context
         """
         # Extract file paths from context for additional safety guidance
         import re
+
         file_pattern = r"=== File: (.*?) ==="
         target_files = re.findall(file_pattern, context)
-        
+
         file_guidance = ""
         if target_files:
-            file_guidance = f"\nValidated Target Files: {', '.join(target_files)}\nIMPORTANT: Use ONLY these exact file paths in your operations.\n"
-        
+            file_list = ", ".join(target_files)
+            file_guidance = (
+                f"\nValidated Target Files: {file_list}\n"
+                "IMPORTANT: Use ONLY these exact file paths in your operations.\n"
+            )
+
         base_prompt = f"""
 Plan: {plan_summary}
 {file_guidance}
@@ -272,10 +295,10 @@ Generate JSON operations to implement this plan.
 Use the EXACT text from the context above for the "find" fields.
 Focus on making minimal changes to make tests pass.
 """
-        
+
         if not previous_attempts:
             return base_prompt
-        
+
         # Add learning context from previous attempts
         validation_context = "\n\nPREVIOUS VALIDATION FEEDBACK:\n"
         for i, attempt in enumerate(previous_attempts):
@@ -286,46 +309,45 @@ Focus on making minimal changes to make tests pass.
                 validation_context += f"\nAttempt {i+1} Issues: {'; '.join(issues)}"
                 if suggestions:
                     validation_context += f"\nSuggestions: {'; '.join(suggestions)}"
-        
+
         validation_context += "\n\nPlease address these validation issues in your JSON operations."
-        
+
         return base_prompt + validation_context
 
     def _extract_learning_context(self, validation_attempts: list) -> Dict[str, Any]:
         """
         Extract learning context from validation attempts for future reference.
-        
+
         Args:
             validation_attempts: List of validation attempts
-            
+
         Returns:
             Learning context dictionary
         """
         if not validation_attempts:
             return {}
-        
+
         all_issues = []
         common_patterns = {}
-        
+
         for attempt in validation_attempts:
             validation = attempt.get("validation", {})
             issues = validation.get("issues", [])
             all_issues.extend(issues)
-            
+
             # Track common issue patterns
             for issue in issues:
                 pattern = issue.split(":")[0] if ":" in issue else issue
                 common_patterns[pattern] = common_patterns.get(pattern, 0) + 1
-        
+
         return {
             "total_attempts": len(validation_attempts),
             "all_issues": all_issues,
             "common_issue_patterns": common_patterns,
             "final_success": validation_attempts[-1]["validation"].get("valid", False),
             "improvement_trajectory": [
-                attempt["validation"].get("valid", False) 
-                for attempt in validation_attempts
-            ]
+                attempt["validation"].get("valid", False) for attempt in validation_attempts
+            ],
         }
 
     def _extract_json_from_response(self, response: str) -> str:
@@ -347,29 +369,40 @@ Focus on making minimal changes to make tests pass.
             except json.JSONDecodeError:
                 pass
 
-        # Phase 2: Enhanced simulation mode with multiple test patterns  
+        # Phase 2: Enhanced simulation mode with multiple test patterns
         if "assert 1 == 2" in response or "test_camel_demo" in response.lower():
             # Try multiple possible assertion patterns for simulation mode
             return json.dumps(
                 {
                     "ops": [
                         {
-                            "file": "tests/test_camel_demo.py", 
-                            "find": 'assert 1 == 2, "This should fail to test Phase 2 enhanced validation"',
-                            "replace": 'assert 1 == 1, "This should pass with Phase 2 validation"',
+                            "file": "tests/test_camel_demo.py",
+                            "find": (
+                                "assert 1 == 2, "
+                                '"This should fail to test Phase 2 enhanced validation"'
+                            ),
+                            "replace": (
+                                "assert 1 == 1, " '"This should pass with Phase 2 validation"'
+                            ),
                         }
                     ]
                 }
             )
-        
+
         if "hello" in response and "world" in response:
             return json.dumps(
                 {
                     "ops": [
                         {
                             "file": "tests/test_camel_demo.py",
-                            "find": 'assert "hello" == "world", "This should fail to test Phase 2 iterative validation"',
-                            "replace": 'assert "hello" == "hello", "This should pass with Phase 2 iterative validation"',
+                            "find": (
+                                'assert "hello" == "world", '
+                                '"This should fail to test Phase 2 iterative validation"'
+                            ),
+                            "replace": (
+                                'assert "hello" == "hello", '
+                                '"This should pass with Phase 2 iterative validation"'
+                            ),
                         }
                     ]
                 }

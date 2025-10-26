@@ -11,7 +11,7 @@ The framework consists of several core components:
 ```
 Framework
 ├── agents.py          # Abstract agent classes and interfaces
-├── coordinators.py    # Workflow orchestration patterns  
+├── coordinators.py    # Workflow orchestration patterns
 ├── tools.py           # Tool system and registry
 ├── llm.py            # LLM integration abstractions
 ├── observability.py  # Monitoring and logging
@@ -25,7 +25,7 @@ Framework
 
 **Base Agent Types:**
 - `BaseAgent`: Abstract base for all agents
-- `LLMAgent`: Agents that primarily use LLM interactions  
+- `LLMAgent`: Agents that primarily use LLM interactions
 - `ToolAgent`: Agents that primarily use tools/functions
 
 **Agent Roles:**
@@ -80,7 +80,7 @@ class DataProcessingTool(BaseTool):
             description="Processes input data",
             required_params=["data"]
         )
-    
+
     def execute(self, data):
         return {"processed": f"Processed: {data}"}
 
@@ -132,7 +132,7 @@ class CAMELCoordinator:
     def __init__(self, planner_model, patcher_model):
         self.planner = PlannerAgent(planner_model)
         self.patcher = PatcherAgent(patcher_model)
-    
+
     def process_test_failures(self, test_output):
         # Hard-coded workflow
         pass
@@ -165,7 +165,7 @@ steps:
     step_type: "sequential"
     agents: ["analyzer"]
   - name: "plan_and_execute"
-    step_type: "parallel" 
+    step_type: "parallel"
     agents: ["planner", "updater"]
   - name: "validate"
     step_type: "conditional"
@@ -258,7 +258,7 @@ agent_config = AgentConfig(
 # Before: Single function doing everything
 def process_request(request):
     analysis = analyze(request)
-    plan = create_plan(analysis)  
+    plan = create_plan(analysis)
     result = execute(plan)
     return validate(result)
 
@@ -341,7 +341,7 @@ class TestMyAgent(unittest.TestCase):
     def setUp(self):
         mock_llm = MockLLMWrapper(['{"result": "test response"}'])
         self.agent = MyAgent(config, llm_wrapper=mock_llm)
-    
+
     def test_process(self):
         result = self.agent.process("test input")
         self.assertTrue(result["success"])
@@ -353,10 +353,10 @@ class TestMyAgent(unittest.TestCase):
 def test_workflow():
     # Use mock LLMs for testing
     workflow = create_test_workflow_with_mocks()
-    
+
     # Execute with test data
     result = workflow.execute_workflow("test input")
-    
+
     # Verify results
     assert not result.has_errors()
     assert len(result.step_results) == expected_steps
@@ -369,7 +369,7 @@ The framework is designed for extensibility:
 1. **Async Support**: Add `AsyncAgent` and `AsyncCoordinator` classes
 2. **Distributed Execution**: Implement remote agent execution
 3. **Advanced LLM Features**: Support for streaming, function calling
-4. **Visual Workflow Designer**: Web UI for building workflows  
+4. **Visual Workflow Designer**: Web UI for building workflows
 5. **Integration Plugins**: Pre-built integrations for common services
 
 ## 📝 Best Practices

@@ -3,16 +3,16 @@
 import json
 from typing import Any, Dict, List, Optional
 
+from ..git_utils import (
+    commit_all,
+    create_branch,
+    current_sha,
+    get_base_branch,
+    open_pull_request,
+    tag_branch_with_sentries_metadata,
+)
 from ..intelligent_analysis import create_smart_context
 from ..patch_engine import create_patch_engine
-from ..git_utils import (
-    create_branch,
-    commit_all,
-    open_pull_request,
-    get_base_branch,
-    tag_branch_with_sentries_metadata,
-    current_sha,
-)
 from ..runner_common import get_logger
 
 logger = get_logger(__name__)
@@ -134,9 +134,7 @@ class PatchValidationTool:
 
             for idx, op in enumerate(ops):
                 if not isinstance(op, dict):
-                    validation_result["issues"].append(
-                        f"Operation {idx} is not a dictionary"
-                    )
+                    validation_result["issues"].append(f"Operation {idx} is not a dictionary")
                     continue
 
                 required_keys = {"file", "find", "replace"}
@@ -174,15 +172,13 @@ class PatchValidationTool:
 class GitOperationsTool:
     """
     Phase 2: Git operations tool for branch management and PR creation.
-    
+
     Provides agents with the ability to perform Git operations safely
     and with proper metadata tracking.
     """
 
     @staticmethod
-    def create_feature_branch(
-        branch_name: str, sentry_type: str = "testsentry"
-    ) -> Dict[str, Any]:
+    def create_feature_branch(branch_name: str, sentry_type: str = "testsentry") -> Dict[str, Any]:
         """
         Create a new feature branch for fixes.
 
@@ -195,12 +191,12 @@ class GitOperationsTool:
         """
         try:
             logger.info(f"🌿 Creating feature branch: {branch_name}")
-            
+
             # Create branch and tag with metadata
             actual_branch = create_branch(branch_name, sentry_type)
             sha = current_sha()
             tag_branch_with_sentries_metadata(actual_branch, sentry_type, sha)
-            
+
             return {
                 "success": True,
                 "branch_name": actual_branch,
@@ -217,9 +213,7 @@ class GitOperationsTool:
             }
 
     @staticmethod
-    def commit_changes(
-        message: str, files: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    def commit_changes(message: str, files: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         Commit changes with proper message formatting.
 
@@ -232,11 +226,12 @@ class GitOperationsTool:
         """
         try:
             logger.info(f"📝 Committing changes: {message[:50]}...")
-            
+
             if files:
                 notice = (
                     "File-specific commits are not supported yet. "
-                    "Commit previously staged changes or wait for targeted commit support in Phase 3."
+                    "Commit previously staged changes or wait for targeted "
+                    "commit support in Phase 3."
                 )
                 logger.warning(
                     "Attempted to commit specific files %s, but this is not supported yet.",
@@ -251,7 +246,7 @@ class GitOperationsTool:
             else:
                 # Commit all staged changes
                 commit_all(message)
-            
+
             return {
                 "success": True,
                 "message": "Changes committed successfully",
@@ -268,9 +263,7 @@ class GitOperationsTool:
 
     @staticmethod
     def create_pull_request(
-        title: str, 
-        body: str, 
-        head_branch: Optional[str] = None
+        title: str, body: str, head_branch: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Create a pull request with the changes.
@@ -285,9 +278,9 @@ class GitOperationsTool:
         """
         try:
             logger.info(f"🚀 Creating PR: {title}")
-            
+
             base_branch = get_base_branch()
-            
+
             # Use git_utils to create PR
             pr_result = open_pull_request(
                 title=title,
@@ -295,7 +288,7 @@ class GitOperationsTool:
                 base=base_branch,
                 head=head_branch,
             )
-            
+
             return {
                 "success": True,
                 "pr_url": pr_result.get("url", "PR created"),
@@ -323,7 +316,7 @@ class GitOperationsTool:
         """
         try:
             base_branch = get_base_branch()
-            
+
             return {
                 "success": True,
                 "base_branch": base_branch,

@@ -27,7 +27,7 @@ class TestObservabilitySimple:
                     "packages.metrics_core.observability.analyze_text_for_pii", mock_analyze
                 ):
                     messages = [{"role": "user", "content": "Hello"}]
-                    chat("test-model", messages)
+                    response = chat("test-model", messages)
 
                     assert isinstance(response, str)
                     assert len(response) > 0
@@ -53,7 +53,7 @@ class TestObservabilitySimple:
 
             with patch("builtins.__import__", side_effect=mock_import):
                 messages = [{"role": "user", "content": "Hello"}]
-                chat("test-model", messages)
+                response = chat("test-model", messages)
 
                 assert isinstance(response, str)
                 assert len(response) > 0
@@ -248,7 +248,7 @@ class TestObservabilitySimple:
                     messages = [{"role": "user", "content": "Hello"}]
 
                     # Should still work despite observability errors
-                    chat("test-model", messages)
+                    response = chat("test-model", messages)
 
                     assert isinstance(response, str)
                     assert len(response) > 0

@@ -10,5 +10,5 @@ def test_simple_assertion() -> None:
 
 
 def test_another_assertion() -> None:
-    """Another simple test.""" 
+    """Another simple test."""
     assert True, "This should pass"

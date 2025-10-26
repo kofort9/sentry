@@ -6,8 +6,10 @@ Tests the Git operations tool with proper mocking of git_utils functions
 to verify branch management, commits, and PR creation functionality.
 """
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from sentries.camel.tools import GitOperationsTool
 
 
@@ -18,8 +20,8 @@ class TestGitOperationsTool:
         """Set up test fixtures."""
         self.git_tool = GitOperationsTool()
 
-    @patch('sentries.camel.tools.create_branch')
-    @patch('sentries.camel.tools.tag_branch_with_sentries_metadata')
+    @patch("sentries.camel.tools.create_branch")
+    @patch("sentries.camel.tools.tag_branch_with_sentries_metadata")
     def test_create_feature_branch_success(self, mock_tag, mock_create):
         """Test successful feature branch creation with metadata."""
         # Arrange
@@ -33,7 +35,7 @@ class TestGitOperationsTool:
         assert result["success"] is True
         assert result["branch_name"] == "camel-test-fix-123"
         assert "Created and tagged branch" in result["message"]
-        
+
         # Verify calls
         mock_create.assert_called_once_with("test-branch", "testsentry")
         # Verify tag was called with branch, sentry_type, and a SHA (any SHA is fine)
@@ -43,7 +45,7 @@ class TestGitOperationsTool:
         assert call_args[1] == "testsentry"
         assert len(call_args[2]) > 0  # SHA should be non-empty
 
-    @patch('sentries.camel.tools.create_branch')
+    @patch("sentries.camel.tools.create_branch")
     def test_create_feature_branch_failure(self, mock_create):
         """Test branch creation failure handling."""
         # Arrange
@@ -58,7 +60,7 @@ class TestGitOperationsTool:
         assert "Git operation failed" in result["error"]
         assert "Failed to create branch" in result["message"]
 
-    @patch('sentries.camel.tools.commit_all')
+    @patch("sentries.camel.tools.commit_all")
     def test_commit_changes_success(self, mock_commit):
         """Test successful commit operation."""
         # Arrange
@@ -74,7 +76,7 @@ class TestGitOperationsTool:
         assert "Changes committed successfully" in result["message"]
         mock_commit.assert_called_once_with(commit_message)
 
-    @patch('sentries.camel.tools.commit_all')
+    @patch("sentries.camel.tools.commit_all")
     def test_commit_changes_with_files(self, mock_commit):
         """Test commit operation with specific files."""
         # Arrange
@@ -92,7 +94,7 @@ class TestGitOperationsTool:
         assert "not supported" in result["message"].lower()
         mock_commit.assert_not_called()
 
-    @patch('sentries.camel.tools.commit_all')
+    @patch("sentries.camel.tools.commit_all")
     def test_commit_changes_failure(self, mock_commit):
         """Test commit failure handling."""
         # Arrange
@@ -106,14 +108,14 @@ class TestGitOperationsTool:
         assert "Commit failed" in result["error"]
         assert "Failed to commit" in result["message"]
 
-    @patch('sentries.camel.tools.open_pull_request')
-    @patch('sentries.camel.tools.get_base_branch')
+    @patch("sentries.camel.tools.open_pull_request")
+    @patch("sentries.camel.tools.get_base_branch")
     def test_create_pull_request_success(self, mock_get_base, mock_pr):
         """Test successful PR creation."""
         # Arrange
         mock_get_base.return_value = "main"
         mock_pr.return_value = {"url": "https://github.com/test/repo/pull/123"}
-        
+
         title = "Test PR"
         body = "Test description"
         head_branch = "feature-branch"
@@ -127,16 +129,11 @@ class TestGitOperationsTool:
         assert result["title"] == title
         assert result["base_branch"] == "main"
         assert result["head_branch"] == head_branch
-        
-        mock_pr.assert_called_once_with(
-            title=title,
-            body=body,
-            base="main",
-            head=head_branch
-        )
 
-    @patch('sentries.camel.tools.open_pull_request')
-    @patch('sentries.camel.tools.get_base_branch')
+        mock_pr.assert_called_once_with(title=title, body=body, base="main", head=head_branch)
+
+    @patch("sentries.camel.tools.open_pull_request")
+    @patch("sentries.camel.tools.get_base_branch")
     def test_create_pull_request_without_head_branch(self, mock_get_base, mock_pr):
         """Test PR creation without specifying head branch."""
         # Arrange
@@ -149,15 +146,10 @@ class TestGitOperationsTool:
         # Assert
         assert result["success"] is True
         assert result["head_branch"] == "current"
-        mock_pr.assert_called_once_with(
-            title="Test PR",
-            body="Test body", 
-            base="main",
-            head=None
-        )
+        mock_pr.assert_called_once_with(title="Test PR", body="Test body", base="main", head=None)
 
-    @patch('sentries.camel.tools.open_pull_request')
-    @patch('sentries.camel.tools.get_base_branch')
+    @patch("sentries.camel.tools.open_pull_request")
+    @patch("sentries.camel.tools.get_base_branch")
     def test_create_pull_request_failure(self, mock_get_base, mock_pr):
         """Test PR creation failure handling."""
         # Arrange
@@ -172,7 +164,7 @@ class TestGitOperationsTool:
         assert "PR creation failed" in result["error"]
         assert "Failed to create PR" in result["message"]
 
-    @patch('sentries.camel.tools.get_base_branch')
+    @patch("sentries.camel.tools.get_base_branch")
     def test_get_repository_info_success(self, mock_get_base):
         """Test successful repository info retrieval."""
         # Arrange
@@ -186,7 +178,7 @@ class TestGitOperationsTool:
         assert result["base_branch"] == "main"
         assert "Repository info retrieved" in result["message"]
 
-    @patch('sentries.camel.tools.get_base_branch')
+    @patch("sentries.camel.tools.get_base_branch")
     def test_get_repository_info_failure(self, mock_get_base):
         """Test repository info retrieval failure."""
         # Arrange
@@ -204,13 +196,12 @@ class TestGitOperationsTool:
 class TestGitOperationsToolIntegration:
     """Integration tests for GitOperationsTool workflow."""
 
-    @patch('sentries.camel.tools.create_branch')
-    @patch('sentries.camel.tools.tag_branch_with_sentries_metadata')
-    @patch('sentries.camel.tools.commit_all')
-    @patch('sentries.camel.tools.open_pull_request')
-    @patch('sentries.camel.tools.get_base_branch')
-    def test_full_git_workflow(self, mock_get_base, mock_pr, mock_commit, 
-                              mock_tag, mock_create):
+    @patch("sentries.camel.tools.create_branch")
+    @patch("sentries.camel.tools.tag_branch_with_sentries_metadata")
+    @patch("sentries.camel.tools.commit_all")
+    @patch("sentries.camel.tools.open_pull_request")
+    @patch("sentries.camel.tools.get_base_branch")
+    def test_full_git_workflow(self, mock_get_base, mock_pr, mock_commit, mock_tag, mock_create):
         """Test complete Git workflow: branch → commit → PR."""
         # Arrange
         git_tool = GitOperationsTool()
@@ -222,9 +213,7 @@ class TestGitOperationsToolIntegration:
         branch_result = git_tool.create_feature_branch("workflow-test", "testsentry")
         commit_result = git_tool.commit_changes("feat: Test workflow changes")
         pr_result = git_tool.create_pull_request(
-            "Test Workflow PR", 
-            "Complete workflow test", 
-            "camel-workflow-test"
+            "Test Workflow PR", "Complete workflow test", "camel-workflow-test"
         )
 
         # Assert - All operations successful
@@ -251,12 +240,12 @@ class TestGitOperationsToolIntegration:
     def test_git_tool_error_propagation(self):
         """Test that GitOperationsTool properly propagates errors."""
         git_tool = GitOperationsTool()
-        
-        with patch('sentries.camel.tools.create_branch') as mock_create:
+
+        with patch("sentries.camel.tools.create_branch") as mock_create:
             mock_create.side_effect = RuntimeError("Critical Git error")
-            
+
             result = git_tool.create_feature_branch("test", "testsentry")
-            
+
             assert result["success"] is False
             assert "Critical Git error" in result["error"]
             assert isinstance(result["error"], str)  # Error converted to string
@@ -272,7 +261,7 @@ GIT_TOOL_TEST_SCENARIOS = [
     },
     {
         "name": "special_characters_branch",
-        "branch_name": "fix/issue-456", 
+        "branch_name": "fix/issue-456",
         "sentry_type": "docsentry",
         "expected_calls": 1,
     },
@@ -281,24 +270,23 @@ GIT_TOOL_TEST_SCENARIOS = [
         "branch_name": "very-long-branch-name-for-comprehensive-testing",
         "sentry_type": "testsentry",
         "expected_calls": 1,
-    }
+    },
 ]
 
 
 @pytest.mark.parametrize("scenario", GIT_TOOL_TEST_SCENARIOS)
 def test_git_tool_branch_creation_scenarios(scenario):
     """Parameterized test for various branch creation scenarios."""
-    with patch('sentries.camel.tools.create_branch') as mock_create, \
-         patch('sentries.camel.tools.tag_branch_with_sentries_metadata') as mock_tag:
-        
+    with (
+        patch("sentries.camel.tools.create_branch") as mock_create,
+        patch("sentries.camel.tools.tag_branch_with_sentries_metadata") as mock_tag,
+    ):
+
         mock_create.return_value = f"actual-{scenario['branch_name']}"
-        
+
         git_tool = GitOperationsTool()
-        result = git_tool.create_feature_branch(
-            scenario["branch_name"], 
-            scenario["sentry_type"]
-        )
-        
+        result = git_tool.create_feature_branch(scenario["branch_name"], scenario["sentry_type"])
+
         assert result["success"] is True
         assert mock_create.call_count == scenario["expected_calls"]
         assert mock_tag.call_count == scenario["expected_calls"]

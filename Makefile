@@ -72,26 +72,26 @@ with DuckDBManager('warehouse/metrics.duckdb') as db:
     # Get events
     events_df = db.get_events()
     print(f'Processing {len(events_df)} events')
-    
+
     # Initialize tokenizers
     bpe_tokenizer = build_bpe_tokenizer()
     sp_tokenizer = build_sentencepiece_unigram()
-    
+
     # Process events for tokenization analysis
     all_text = ' '.join(events_df['message'].tolist())
-    
+
     # BPE analysis
     bpe_tokens = bpe_tokenizer.encode(all_text)
     bpe_counts = {}
     for token_id in bpe_tokens.ids:
         bpe_counts[token_id] = bpe_counts.get(token_id, 0) + 1
-    
+
     # SP analysis
     sp_tokens = sp_tokenizer.encode(all_text)
     sp_counts = {}
     for token_id in sp_tokens:
         sp_counts[token_id] = sp_counts.get(token_id, 0) + 1
-    
+
     # Create snapshots
     from datetime import datetime
     bpe_snapshot = {
@@ -103,7 +103,7 @@ with DuckDBManager('warehouse/metrics.duckdb') as db:
         'unique_tokens': len(set(bpe_tokens.ids)),
         'token_counts': bpe_counts
     }
-    
+
     sp_snapshot = {
         'timestamp': datetime.now(),
         'service': 'testsentry',
@@ -113,18 +113,18 @@ with DuckDBManager('warehouse/metrics.duckdb') as db:
         'unique_tokens': len(set(sp_tokens)),
         'token_counts': sp_counts
     }
-    
+
     db.insert_snapshot(bpe_snapshot)
     db.insert_snapshot(sp_snapshot)
-    
+
     # PII analysis
     pii_spans = detect_all_pii(all_text)
     pii_stats = get_pii_statistics(pii_spans, all_text)
-    
+
     # Calculate scrubber metrics (simplified)
     total_chars = len(all_text)
     pii_chars = sum(end - start for start, end, _ in pii_spans)
-    
+
     # BPE scrubbing simulation
     bpe_scrubber_metrics = {
         'algorithm': 'bpe',
@@ -137,7 +137,7 @@ with DuckDBManager('warehouse/metrics.duckdb') as db:
         'masked_pii_chars': int(pii_chars * 0.90 * 0.95),
         'false_positive_chars': int(pii_chars * 0.02)
     }
-    
+
     # SP scrubbing simulation
     sp_scrubber_metrics = {
         'algorithm': 'sp',
@@ -150,10 +150,10 @@ with DuckDBManager('warehouse/metrics.duckdb') as db:
         'masked_pii_chars': int(pii_chars * 0.87 * 0.97),
         'false_positive_chars': int(pii_chars * 0.01)
     }
-    
+
     db.insert_scrubber_metrics(bpe_scrubber_metrics)
     db.insert_scrubber_metrics(sp_scrubber_metrics)
-    
+
     print('✅ Benchmarks completed')
 "
 	@echo "✅ Benchmarks completed"
@@ -203,7 +203,7 @@ help:
 	@echo ""
 	@echo "Observability workflow:"
 	@echo "  sample-data    - Generate synthetic sample data"
-	@echo "  benchmarks     - Run observability benchmarks" 
+	@echo "  benchmarks     - Run observability benchmarks"
 	@echo "  reports        - Generate deterministic PNG reports"
 	@echo "  streamlit      - Run interactive Streamlit app"
 	@echo "  check-determinism - Verify reports are deterministic"

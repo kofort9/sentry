@@ -3,10 +3,10 @@
 import datetime
 from typing import Any, Dict
 
-from .planner import PlannerAgent
-from .patcher import PatcherAgent
-from .error_recovery import global_error_recovery, with_error_recovery
 from ..runner_common import get_logger
+from .error_recovery import global_error_recovery
+from .patcher import PatcherAgent
+from .planner import PlannerAgent
 
 logger = get_logger(__name__)
 
@@ -44,8 +44,12 @@ class CAMELCoordinator:
             logger.info("📋 Planner agent analyzing test failures...")
             planning_result = global_error_recovery.with_recovery(
                 lambda: self.planner.analyze_and_plan(test_output),
-                context={"phase": "planning", "agent": "planner", "test_output_length": len(test_output)},
-                custom_max_retries=2
+                context={
+                    "phase": "planning",
+                    "agent": "planner",
+                    "test_output_length": len(test_output),
+                },
+                custom_max_retries=2,
             )
 
             if not planning_result.get("success"):
@@ -68,9 +72,9 @@ class CAMELCoordinator:
                     test_file = pack.get("test_file", "unknown_file")
                     enhanced_context_parts.append(f"=== File: {test_file} ===")
                     enhanced_context_parts.extend(pack.get("context_parts", []))
-                
+
                 context = "\n".join(enhanced_context_parts)
-                
+
                 # Log the enhanced context for debugging
                 file_list = [pack.get("test_file", "unknown") for pack in context_packs]
                 logger.info(f"📁 Enhanced context includes {len(context_packs)} files: {file_list}")
@@ -83,8 +87,13 @@ class CAMELCoordinator:
             logger.info("🔧 Patcher agent generating patch from plan...")
             patching_result = global_error_recovery.with_recovery(
                 lambda: self.patcher.generate_patch(plan, context),
-                context={"phase": "patching", "agent": "patcher", "plan_complexity": len(str(plan))},
-                custom_max_retries=3  # Allow more retries for patching since it has iterative validation
+                context={
+                    "phase": "patching",
+                    "agent": "patcher",
+                    "plan_complexity": len(str(plan)),
+                },
+                # Allow more retries for patching since it has iterative validation
+                custom_max_retries=3,
             )
 
             workflow_end = datetime.datetime.now()
@@ -109,12 +118,15 @@ class CAMELCoordinator:
 
         except Exception as exc:
             # Classify and log the error through our recovery system
-            global_error_recovery.classify_error(exc, {
-                "component": "coordinator",
-                "operation": "process_test_failures",
-                "test_output_length": len(test_output)
-            })
-            
+            global_error_recovery.classify_error(
+                exc,
+                {
+                    "component": "coordinator",
+                    "operation": "process_test_failures",
+                    "test_output_length": len(test_output),
+                },
+            )
+
             logger.error(f"Error in CAMEL coordinator: {exc}")
             return {
                 "success": False,
@@ -154,15 +166,14 @@ class CAMELCoordinator:
                 },
             ],
             "total_interactions": (
-                len(self.planner.conversation_history)
-                + len(self.patcher.conversation_history)
+                len(self.planner.conversation_history) + len(self.patcher.conversation_history)
             ),
         }
 
     def get_error_recovery_status(self) -> Dict[str, Any]:
         """
         Get the current error recovery status for dashboard monitoring.
-        
+
         Returns:
             Dictionary with error recovery statistics and recent errors
         """

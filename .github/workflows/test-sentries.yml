@@ -27,38 +27,38 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e .
           pip install pytest pytest-cov pytest-mock
-      
+
       - name: Basic import test
         run: |
           python -c "import sentries; print('Sentries imported successfully')"
-      
+
       - name: Run unit tests
         id: unit-tests
         run: |
           # Run pytest and capture output to file, but don't fail the workflow
           pytest sentries/ --cov=sentries --cov-report=xml --tb=short -q > pytest-output.txt 2>&1 || true
-          
+
           # Capture pytest exit code and output
           pytest_exit_code=$?
           echo "pytest_exit_code=$pytest_exit_code" >> $GITHUB_OUTPUT
-          
+
           if [ $pytest_exit_code -eq 0 ]; then
             echo "test_status=passing" >> $GITHUB_OUTPUT
             echo "✅ All tests are passing"
@@ -67,13 +67,13 @@ jobs:
             echo "❌ Some tests are failing - TestSentry will attempt to fix them"
             echo "📄 Test failure output saved to pytest-output.txt"
           fi
-      
+
       - name: Test CLI installation
         run: |
           # Test that the core CLI commands are properly installed
           timeout 5s testsentry --help || echo "testsentry command available"
           timeout 5s docsentry --help || echo "docsentry command available"
-      
+
       - name: Test import functionality
         run: |
           python -c "
@@ -81,15 +81,15 @@ jobs:
           from sentries import testsentry, docsentry
           print('Core modules imported successfully')
           "
-      
 
-      
+
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
-      
+
       - name: Upload test results
         if: steps.unit-tests.outputs.test_status == 'failing'
         uses: actions/upload-artifact@v4
@@ -105,12 +105,12 @@ jobs:
     needs: [test-basic, lint]
     if: |
       (github.event_name == 'workflow_dispatch' && github.event.inputs.run_llm_tests == 'true') ||
-      (github.event_name == 'pull_request' && 
-       github.event.pull_request.draft == false && 
-       (contains(github.event.pull_request.labels.*.name, 'test-llm') || 
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.draft == false &&
+       (contains(github.event.pull_request.labels.*.name, 'test-llm') ||
         contains(github.event.pull_request.title, '[test-llm]') ||
         contains(github.event.pull_request.body, '[test-llm]')))
-    
+
     steps:
       - name: Check Self-Hosted Runner Availability
         run: |
@@ -129,7 +129,7 @@ jobs:
           echo ""
           echo "🔄 This check will timeout in 5 minutes if no runner is available"
           echo "⏰ Started at: $(date)"
-          
+
           # Set a timeout to prevent infinite waiting
           timeout 300 bash -c 'while true; do echo "⏳ Waiting for self-hosted runner..."; sleep 30; done' || {
             echo "❌ Timeout: No self-hosted runner available after 5 minutes"
@@ -145,19 +145,19 @@ jobs:
     timeout-minutes: 30
     if: |
       (github.event_name == 'workflow_dispatch' && github.event.inputs.run_llm_tests == 'true') ||
-      (github.event_name == 'pull_request' && 
-       github.event.pull_request.draft == false && 
-       (contains(github.event.pull_request.labels.*.name, 'test-llm') || 
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.draft == false &&
+       (contains(github.event.pull_request.labels.*.name, 'test-llm') ||
         contains(github.event.pull_request.title, '[test-llm]') ||
         contains(github.event.pull_request.body, '[test-llm]')))
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+
       - name: Explain LLM test execution
         run: |
           echo "🤖 TestSentry LLM tests are running because:"
@@ -172,14 +172,14 @@ jobs:
           echo "  - Remove 'test-llm' from PR title/body"
           echo "  - Remove 'test-llm' label from PR"
           echo "  - Or run workflow manually with run_llm_tests=false"
-      
+
       - name: Download test failure artifacts
         if: always()
         uses: actions/download-artifact@v4
         with:
           pattern: test-failures-*
           merge-multiple: true
-      
+
       - name: Check Runner Health
         id: runner-health
         run: |
@@ -189,24 +189,24 @@ jobs:
           echo "💾 Available memory: $(free -h | grep Mem)"
           echo "💽 Available disk: $(df -h / | tail -1)"
           echo "🌐 Network connectivity: $(ping -c 1 github.com >/dev/null 2>&1 && echo "✅ Connected" || echo "❌ No connection")"
-          
+
       - name: Check Ollama Status
         id: ollama-check
         timeout-minutes: 2
         run: |
           echo "🔍 Checking Ollama service status..."
-          
+
           # Check if Ollama is running
           if ! curl -sSf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
             echo "❌ Ollama is not running or not accessible"
             echo "🔧 Attempting to start Ollama..."
-            
+
             # Try to start Ollama if it's not running
             if command -v ollama >/dev/null 2>&1; then
               echo "📦 Ollama binary found, attempting to start service..."
               nohup ollama serve > /tmp/ollama.log 2>&1 &
               sleep 10
-              
+
               # Check again after attempting to start
               if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
                 echo "✅ Ollama started successfully"
@@ -224,7 +224,7 @@ jobs:
           else
             echo "✅ Ollama is running and accessible"
           fi
-          
+
           # Check available models
           echo "📋 Checking available models..."
           models=$(curl -s http://127.0.0.1:11434/api/tags | jq -r '.models[].name' 2>/dev/null || echo "")
@@ -243,14 +243,14 @@ jobs:
             echo "✅ Available models:"
             echo "$models" | sed 's/^/  - /'
           fi
-          
+
           echo "status=ready" >> $GITHUB_OUTPUT
-      
+
       - name: Check test status from artifacts
         id: pytest-check
         run: |
           echo "🧪 Checking test status from GitHub-hosted runner results..."
-          
+
           # Check if we have test failure artifacts
           if [ -f "pytest-output.txt" ]; then
             echo "📄 Found test failure output from GitHub-hosted runners"
@@ -262,7 +262,7 @@ jobs:
             echo "✅ No test failure artifacts found - tests are likely passing"
             echo "test_status=passing" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Check if LLM jobs should run
         id: check-llm
         run: |
@@ -277,13 +277,13 @@ jobs:
             echo "reason=Lint checks passed" >> $GITHUB_OUTPUT
             echo "✅ LLM jobs should run - code quality verified"
           fi
-      
+
       - name: Install Sentries
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         run: |
           pip install -e .
           pip install -e .[viz]
-      
+
       - name: Setup Observability
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         run: |
@@ -292,7 +292,7 @@ jobs:
           make sample-data
           make benchmarks
           echo "✅ Observability setup complete"
-      
+
       - name: Run TestSentry with LLM
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         env:
@@ -305,10 +305,10 @@ jobs:
         run: |
           echo "🚀 Running TestSentry to fix failing tests..."
           echo "Test status from pytest: ${{ steps.pytest-check.outputs.test_status }}"
-          
+
           # Run TestSentry - it will automatically detect and fix test failures
           testsentry
-      
+
       - name: Run DocSentry with LLM
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         env:
@@ -321,13 +321,13 @@ jobs:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
         run: |
           docsentry
-      
+
       - name: Generate Observability Reports
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         run: |
           echo "📈 Generating observability reports..."
           make reports
-          
+
           # Check if reports were generated
           if [ -f "reports/drift_psi_js.png" ] && [ -f "reports/scrubber_leakage.png" ] && [ -f "reports/drift_top_tokens.csv" ]; then
             echo "✅ Observability reports generated successfully"
@@ -336,14 +336,14 @@ jobs:
             echo "⚠️ Some reports may be missing"
             ls -la reports/ || echo "Reports directory not found"
           fi
-      
+
       - name: Check Report Determinism
         if: steps.ollama-check.outputs.status == 'ready' && steps.check-llm.outputs.should-run == 'true'
         run: |
           echo "🔍 Checking report determinism..."
           make check-determinism
           echo "✅ Reports are deterministic"
-      
+
       - name: LLM Jobs Summary
         if: always()
         run: |
@@ -354,14 +354,14 @@ jobs:
               echo "🧪 Test status: ${{ steps.pytest-check.outputs.test_status }}"
               echo "📊 Observability metrics collected and reports generated"
               echo "🔗 Check the PR for any improvements created by sentries"
-              
+
               # Add observability summary to GitHub step summary
               echo "## 📊 Observability Summary" >> $GITHUB_STEP_SUMMARY
               echo "- **PSI Last Week**: Check drift_psi_js.png for trend" >> $GITHUB_STEP_SUMMARY
               echo "- **PII Leakage Rate**: Check scrubber_leakage.png for performance" >> $GITHUB_STEP_SUMMARY
               echo "- **Top Tokens**: See drift_top_tokens.csv for token analysis" >> $GITHUB_STEP_SUMMARY
               echo "- **Reports Generated**: $(ls reports/*.png reports/*.csv 2>/dev/null | wc -l) files" >> $GITHUB_STEP_SUMMARY
-              
+
               if [ "${{ steps.pytest-check.outputs.test_status }}" = "failing" ]; then
                 echo "💡 TestSentry attempted to fix failing tests - check for new PRs"
               fi
@@ -379,12 +379,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-basic, lint]
     if: |
-      github.event_name == 'pull_request' && 
+      github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&
-      !(contains(github.event.pull_request.labels.*.name, 'test-llm') || 
+      !(contains(github.event.pull_request.labels.*.name, 'test-llm') ||
         contains(github.event.pull_request.title, '[test-llm]') ||
         contains(github.event.pull_request.body, '[test-llm]'))
-    
+
     steps:
       - name: Explain LLM test skip
         run: |
@@ -414,69 +414,69 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-basic, lint]
     if: github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      
+
       - name: Install dependencies
         run: |
           pip install -e .
           pip install pytest pytest-mock
-      
+
       - name: Create test repository structure
         run: |
           # Create a mock repository structure to test sentries
           mkdir -p test-repo/tests test-repo/docs
           cd test-repo
-          
+
           # Create a failing test
           cat > tests/test_example.py << 'EOF'
           def test_failing_function():
               assert 1 == 2  # This will fail
-          
+
           def test_passing_function():
               assert 1 == 1  # This will pass
           EOF
-          
+
           # Create a simple Python file
           cat > example.py << 'EOF'
           def example_function():
               return "Hello, World!"
           EOF
-          
+
           # Initialize git
           git init
           git config user.name "Test User"
           git config user.email "test@example.com"
           git add .
           git commit -m "Initial commit with failing test"
-          
+
           # Create a branch for testing
           git checkout -b test-branch
-          
+
           # Modify a file to trigger doc updates
           echo "# Updated Documentation" > README.md
           git add README.md
           git commit -m "Update documentation"
-          
+
           echo "Test repository created successfully"
-      
+
       - name: Test sentries in mock environment
         run: |
           cd test-repo
-          
+
           # Set environment variables for testing
           export GITHUB_REPOSITORY="test-org/test-repo"
           export GITHUB_REF="refs/heads/test-branch"
-          
+
           # Test that sentries can be imported and run (without actual LLM calls)
           python -c "
           import sys
@@ -484,39 +484,39 @@ jobs:
           from sentries import testsentry, docsentry
           print('Sentries imported successfully in test environment')
           "
-      
+
       - name: Cleanup test repository
         run: |
           rm -rf test-repo
 
   lint:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      
+
       - name: Install linting tools
         run: |
           pip install flake8 black isort mypy
-      
+
       - name: Run flake8
         run: |
           flake8 sentries/ --max-line-length=100 --extend-ignore=E203,W503
-      
+
       - name: Run black check
         run: |
           black --check --diff sentries/
-      
+
       - name: Run isort check
         run: |
           isort --check-only --diff sentries/
-      
+
       - name: Run mypy
         run: |
           mypy sentries/ --ignore-missing-imports --no-strict-optional || echo "mypy check failed but continuing"

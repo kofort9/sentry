@@ -15,7 +15,7 @@
 
 This project has been **tabled** due to resource limitations. It serves as a **proof-of-concept** demonstrating the technical feasibility of using local LLMs for automated test maintenance.
 
-**Current Status**: 
+**Current Status**:
 - ✅ **TestSentry**: Basic functionality works for simple test failures
 - ❌ **DocSentry**: Never fully implemented
 - 🟡 **Overall**: POC complete, not suitable for production use
@@ -156,7 +156,7 @@ sentries-cleanup --dry-run
 - ❌ Integration problems
 - ❌ Advanced pytest scenarios
 
-**Allowlist**: `tests/`  
+**Allowlist**: `tests/`
 **Limits**: ≤5 files, ≤200 lines changed
 
 ## 📚 DocSentry (POC Status: Not Implemented)
@@ -198,7 +198,7 @@ sentries-cleanup --dry-run
    ```bash
    # On macOS
    brew install ollama
-   
+
    # On Linux
    curl -fsSL https://ollama.ai/install.sh | sh
    ```
@@ -445,7 +445,7 @@ python -m sentries.testsentry
 ```python
 # For API mode
 MODEL_PLAN = "gpt-4"                    # OpenAI
-MODEL_PLAN = "claude-3-sonnet"          # Anthropic  
+MODEL_PLAN = "claude-3-sonnet"          # Anthropic
 MODEL_PLAN = "llama3-8b-8192"           # Groq (free tier)
 
 # For local mode
@@ -542,11 +542,11 @@ The system automatically detects which mode to use:
 
 #### **"Ollama connection failed"**
 - **Problem**: Can't connect to local Ollama
-- **Solution**: 
+- **Solution**:
   ```bash
   # Start Ollama
   ollama serve
-  
+
   # Pull required models
   ollama pull llama3.1
   ollama pull deepseek-coder
@@ -650,7 +650,7 @@ See the observability documentation for details on metrics and monitoring.
 ## 🛣️ **Roadmap**
 
 - [ ] **Framework generalization** for multi-domain workflows
-- [ ] **ContextBuilder sidecar** implementation  
+- [ ] **ContextBuilder sidecar** implementation
 - [ ] **Enhanced error recovery** and retry logic
 - [ ] **Production deployment** guidelines
 - [ ] **Performance optimization** and resource management

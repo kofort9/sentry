@@ -26,7 +26,7 @@ def has_api_key() -> bool:
     if os.getenv("SENTRIES_FORCE_LOCAL", "").lower() in ("true", "1", "yes"):
         logger.info("🏠 SENTRIES_FORCE_LOCAL is set - forcing local LLM mode")
         return False
-        
+
     return bool(
         os.getenv("OPENAI_API_KEY")
         or os.getenv("ANTHROPIC_API_KEY")

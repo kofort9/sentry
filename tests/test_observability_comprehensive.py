@@ -108,7 +108,7 @@ class TestObservabilityComprehensive:
                             {"role": "system", "content": "You are helpful"},
                             {"role": "user", "content": "Hello world"},
                         ]
-                        response = chat("llama3.1", messages, max_tokens=1000)
+                        chat("llama3.1", messages, max_tokens=1000)
 
                         # Verify observability logging
                         mock_log.assert_called_once()
@@ -471,7 +471,7 @@ class TestObservabilityComponents:
         """Test PII detection components work correctly."""
         # Test that we can import and use PII detection
         try:
-            from packages.scrubber.detectors import PIIDetectionResult, PIISpan, detect_all_pii
+            from packages.scrubber.detectors import PIIDetectionResult, detect_all_pii
 
             # Test basic PII detection
             test_text = "Contact john.doe@example.com or call (555) 123-4567"

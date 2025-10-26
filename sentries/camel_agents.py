@@ -10,10 +10,10 @@ callers during the transition period.
 from .camel import (
     CAMELCoordinator,
     GitOperationsTool,
+    PatcherAgent,
     PatchGenerationTool,
     PatchValidationTool,
     PlannerAgent,
-    PatcherAgent,
     SentryLLMWrapper,
     TestAnalysisTool,
 )

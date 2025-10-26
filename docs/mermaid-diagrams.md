@@ -43,4 +43,3 @@ flowchart TD
     Validator --> Observability[(Telemetry + Metrics)]
     Observability --> Dashboard[(Dashboard / Logs)]
 ```
-

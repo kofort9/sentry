@@ -29,10 +29,10 @@ pre-commit install
    ```bash
    # Run linting
    make lint
-   
+
    # Run tests
    make test
-   
+
    # Test with local LLMs
    export SENTRIES_FORCE_LOCAL=true
    pytest tests/

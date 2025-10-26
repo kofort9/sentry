@@ -4,9 +4,9 @@ import datetime
 import json
 from typing import Any, Dict
 
+from ..runner_common import get_logger
 from .llm import SentryLLMWrapper
 from .tools import TestAnalysisTool
-from ..runner_common import get_logger
 
 logger = get_logger(__name__)
 
@@ -84,11 +84,9 @@ DECISION RULES:
                 }
 
             first_failure = context_packs[0]
-            
+
             # Phase 2: Build context-aware prompt with learning from history
-            planning_prompt = self._build_enhanced_planning_prompt(
-                first_failure, test_output
-            )
+            planning_prompt = self._build_enhanced_planning_prompt(first_failure, test_output)
 
             messages = [
                 {"role": "system", "content": self.system_message},
@@ -97,27 +95,44 @@ DECISION RULES:
 
             # Log LLM interaction if logger is available
             if self.llm_logger:
-                self.llm_logger("planner", "system", self.system_message, self.model_name, 
-                               {"context": "planning_prompt"})
-                self.llm_logger("planner", "user", planning_prompt, self.model_name,
-                               {"failure_type": first_failure['failure_type'], 
-                                "test_file": first_failure['test_file']})
+                self.llm_logger(
+                    "planner",
+                    "system",
+                    self.system_message,
+                    self.model_name,
+                    {"context": "planning_prompt"},
+                )
+                self.llm_logger(
+                    "planner",
+                    "user",
+                    planning_prompt,
+                    self.model_name,
+                    {
+                        "failure_type": first_failure["failure_type"],
+                        "test_file": first_failure["test_file"],
+                    },
+                )
 
             response = self.llm.generate(messages)
 
             # Log LLM response
             if self.llm_logger:
-                self.llm_logger("planner", "assistant", response, self.model_name,
-                               {"planning_phase": "analyze_and_plan"})
+                self.llm_logger(
+                    "planner",
+                    "assistant",
+                    response,
+                    self.model_name,
+                    {"planning_phase": "analyze_and_plan"},
+                )
 
             # Phase 2: Enhanced conversation memory with learning context
             interaction = {
                 "timestamp": datetime.datetime.now().isoformat(),
                 "input": {
                     "test_output_summary": test_output[:200] + "...",
-                    "failure_type": first_failure['failure_type'],
-                    "test_file": first_failure['test_file'],
-                    "test_function": first_failure['test_function'],
+                    "failure_type": first_failure["failure_type"],
+                    "test_file": first_failure["test_file"],
+                    "test_function": first_failure["test_function"],
                 },
                 "output": response,
                 "analysis": analysis_result,
@@ -127,10 +142,10 @@ DECISION RULES:
 
             try:
                 plan = json.loads(response)
-                
+
                 # Validate and enhance plan with historical insights
                 enhanced_plan = self._enhance_plan_with_insights(plan, first_failure)
-                
+
                 return {
                     "success": True,
                     "plan": enhanced_plan,
@@ -155,11 +170,11 @@ DECISION RULES:
     ) -> str:
         """
         Phase 2: Build planning prompt with historical learning context.
-        
+
         Args:
             first_failure: Primary failure to analyze
             test_output: Full test output
-            
+
         Returns:
             Enhanced planning prompt with historical context
         """
@@ -193,34 +208,37 @@ Consider these patterns when creating your plan."""
     def _get_relevant_historical_context(self, failure: Dict[str, Any]) -> str:
         """
         Extract relevant historical context for similar failures.
-        
+
         Args:
             failure: Current failure information
-            
+
         Returns:
             Relevant historical context string
         """
         if not self.conversation_history:
             return ""
 
-        failure_type = failure.get('failure_type', '')
-        test_file = failure.get('test_file', '')
-        
+        failure_type = failure.get("failure_type", "")
+        test_file = failure.get("test_file", "")
+
         relevant_patterns = []
-        
+
         # Look for similar failure types or files in history
         for interaction in self.conversation_history[-5:]:  # Last 5 interactions
-            input_data = interaction.get('input', {})
-            if (input_data.get('failure_type') == failure_type or 
-                input_data.get('test_file') == test_file):
-                
-                learning = interaction.get('learning_context', {})
-                if learning.get('successful_strategies'):
-                    relevant_patterns.extend(learning['successful_strategies'])
+            input_data = interaction.get("input", {})
+            if (
+                input_data.get("failure_type") == failure_type
+                or input_data.get("test_file") == test_file
+            ):
+
+                learning = interaction.get("learning_context", {})
+                if learning.get("successful_strategies"):
+                    relevant_patterns.extend(learning["successful_strategies"])
 
         if relevant_patterns:
-            return f"Similar failures were successfully handled using: {'; '.join(relevant_patterns[:3])}"
-        
+            strategies = "; ".join(relevant_patterns[:3])
+            return f"Similar failures were successfully handled using: {strategies}"
+
         return ""
 
     def _enhance_plan_with_insights(
@@ -228,72 +246,72 @@ Consider these patterns when creating your plan."""
     ) -> Dict[str, Any]:
         """
         Enhance the generated plan with historical insights and validation.
-        
+
         Args:
             plan: Generated plan
             failure: Failure context
-            
+
         Returns:
             Enhanced plan with insights
         """
         # Add confidence scoring based on historical success
         historical_success = self._calculate_historical_success_rate(failure)
-        
+
         enhanced_plan = plan.copy()
-        enhanced_plan['confidence'] = historical_success
-        enhanced_plan['historical_context'] = self._get_planning_insights(failure)
-        
+        enhanced_plan["confidence"] = historical_success
+        enhanced_plan["historical_context"] = self._get_planning_insights(failure)
+
         return enhanced_plan
 
     def _calculate_historical_success_rate(self, failure: Dict[str, Any]) -> float:
         """
         Calculate confidence based on historical success with similar failures.
-        
+
         Args:
             failure: Current failure context
-            
+
         Returns:
             Confidence score (0.0 to 1.0)
         """
         if not self.conversation_history:
             return 0.5  # Default confidence
 
-        failure_type = failure.get('failure_type', '')
+        failure_type = failure.get("failure_type", "")
         similar_cases = []
-        
+
         for interaction in self.conversation_history:
-            input_data = interaction.get('input', {})
-            if input_data.get('failure_type') == failure_type:
+            input_data = interaction.get("input", {})
+            if input_data.get("failure_type") == failure_type:
                 # Check for explicit plan_success field or infer from successful_strategies
-                learning = interaction.get('learning_context', {})
-                if 'plan_success' in learning:
-                    similar_cases.append(learning['plan_success'])
-                elif 'successful_strategies' in learning:
+                learning = interaction.get("learning_context", {})
+                if "plan_success" in learning:
+                    similar_cases.append(learning["plan_success"])
+                elif "successful_strategies" in learning:
                     # If there are successful strategies, assume success
-                    has_success = len(learning['successful_strategies']) > 0
+                    has_success = len(learning["successful_strategies"]) > 0
                     similar_cases.append(has_success)
                 else:
                     # Assume neutral/partial success for recorded interactions
                     similar_cases.append(True)
-        
+
         if similar_cases:
             success_rate = sum(similar_cases) / len(similar_cases)
             return max(0.3, min(0.9, success_rate))  # Clamp between 0.3 and 0.9
-        
+
         return 0.5
 
     def _get_planning_insights(self, failure: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate insights for the current planning session.
-        
+
         Args:
             failure: Current failure context
-            
+
         Returns:
             Planning insights dictionary
         """
         return {
-            "failure_type": failure.get('failure_type'),
+            "failure_type": failure.get("failure_type"),
             "complexity_assessment": self._assess_failure_complexity(failure),
             "recommended_approach": self._get_recommended_approach(failure),
             "risk_factors": self._identify_risk_factors(failure),
@@ -302,7 +320,7 @@ Consider these patterns when creating your plan."""
     def _extract_planning_patterns(self) -> Dict[str, Any]:
         """
         Extract learning patterns from conversation history.
-        
+
         Returns:
             Learning patterns dictionary
         """
@@ -311,14 +329,14 @@ Consider these patterns when creating your plan."""
 
         failure_types = []
         successful_strategies = []
-        
+
         for interaction in self.conversation_history:
-            input_data = interaction.get('input', {})
-            if input_data.get('failure_type'):
-                failure_types.append(input_data['failure_type'])
-            
-            learning = interaction.get('learning_context', {})
-            if learning.get('plan_success'):
+            input_data = interaction.get("input", {})
+            if input_data.get("failure_type"):
+                failure_types.append(input_data["failure_type"])
+
+            learning = interaction.get("learning_context", {})
+            if learning.get("plan_success"):
                 successful_strategies.append("successful_plan")
 
         return {
@@ -329,41 +347,41 @@ Consider these patterns when creating your plan."""
 
     def _assess_failure_complexity(self, failure: Dict[str, Any]) -> str:
         """Assess the complexity of the current failure."""
-        error_msg = failure.get('error_message', '')
-        
-        if 'assert' in error_msg.lower():
+        error_msg = failure.get("error_message", "")
+
+        if "assert" in error_msg.lower():
             return "low"  # Simple assertion fixes
-        elif 'import' in error_msg.lower():
+        elif "import" in error_msg.lower():
             return "medium"  # Import-related issues
-        elif any(word in error_msg.lower() for word in ['syntax', 'indentation', 'parse']):
+        elif any(word in error_msg.lower() for word in ["syntax", "indentation", "parse"]):
             return "medium"  # Syntax issues
         else:
             return "high"  # Complex logic or unknown issues
 
     def _get_recommended_approach(self, failure: Dict[str, Any]) -> str:
         """Get recommended approach based on failure type."""
-        failure_type = failure.get('failure_type', '')
-        
+        failure_type = failure.get("failure_type", "")
+
         approach_map = {
-            'ASSERT_MISMATCH': 'assertion_correction',
-            'IMPORT_ERROR': 'import_fix',
-            'SYNTAX_ERROR': 'syntax_correction',
-            'ATTRIBUTE_ERROR': 'attribute_fix',
+            "ASSERT_MISMATCH": "assertion_correction",
+            "IMPORT_ERROR": "import_fix",
+            "SYNTAX_ERROR": "syntax_correction",
+            "ATTRIBUTE_ERROR": "attribute_fix",
         }
-        
-        return approach_map.get(failure_type, 'general_debugging')
+
+        return approach_map.get(failure_type, "general_debugging")
 
     def _identify_risk_factors(self, failure: Dict[str, Any]) -> list:
         """Identify potential risk factors for the fix."""
         risks = []
-        
-        error_msg = failure.get('error_message', '').lower()
-        
-        if 'production' in error_msg or 'config' in error_msg:
+
+        error_msg = failure.get("error_message", "").lower()
+
+        if "production" in error_msg or "config" in error_msg:
             risks.append("may_affect_production")
-        if 'database' in error_msg or 'db' in error_msg:
+        if "database" in error_msg or "db" in error_msg:
             risks.append("database_related")
-        if 'network' in error_msg or 'api' in error_msg:
+        if "network" in error_msg or "api" in error_msg:
             risks.append("external_dependency")
-            
+
         return risks
