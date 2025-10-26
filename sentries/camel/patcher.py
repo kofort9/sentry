@@ -19,11 +19,12 @@ class PatcherAgent:
     validation tools for safety and correctness.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, llm_logger=None):
         self.model_name = model_name
         self.llm = SentryLLMWrapper(model_name, "patcher")
         self.patch_tool = PatchGenerationTool()
         self.validation_tool = PatchValidationTool()
+        self.llm_logger = llm_logger
 
         self.conversation_history = []
         self.system_message = """You are TestSentry's patcher agent.
@@ -92,7 +93,7 @@ VALIDATION PROCESS:
         self, plan_summary: str, context: str, max_attempts: int = 3
     ) -> Dict[str, Any]:
         """
-        Phase 2: Enhanced validation with iterative refinement.
+        Phase 2: Enhanced validation with iterative refinement and file validation.
         
         Args:
             plan_summary: Summary of the plan to implement
@@ -102,6 +103,28 @@ VALIDATION PROCESS:
         Returns:
             Patch generation results with validation history
         """
+        import re
+        import os
+        
+        # Extract file paths from context headers
+        file_pattern = r"=== File: (.*?) ==="
+        target_files = re.findall(file_pattern, context)
+        
+        # Validate target files exist
+        if target_files:
+            missing_files = [f for f in target_files if not os.path.exists(f)]
+            if missing_files:
+                logger.warning(f"⚠️ Target files do not exist: {missing_files}")
+                return {
+                    "success": False,
+                    "error": f"Target files do not exist: {missing_files}",
+                    "json_operations": "",
+                    "unified_diff": "",
+                    "validation_attempts": 0,
+                }
+            
+            logger.info(f"✅ Validated {len(target_files)} target files exist: {target_files}")
+        
         validation_attempts = []
         
         for attempt in range(max_attempts):
@@ -117,7 +140,20 @@ VALIDATION PROCESS:
                 {"role": "user", "content": patching_prompt},
             ]
 
+            # Log LLM interaction if logger is available
+            if self.llm_logger:
+                self.llm_logger("patcher", "system", self.system_message, self.model_name,
+                               {"context": "patch_generation", "attempt": attempt + 1})
+                self.llm_logger("patcher", "user", patching_prompt, self.model_name,
+                               {"attempt": attempt + 1, "max_attempts": max_attempts})
+
             response = self.llm.generate(messages)
+            
+            # Log LLM response
+            if self.llm_logger:
+                self.llm_logger("patcher", "assistant", response, self.model_name,
+                               {"patch_phase": "generate_patch", "attempt": attempt + 1})
+            
             json_operations = self._extract_json_from_response(response)
 
             # Validate the operations
@@ -141,11 +177,40 @@ VALIDATION PROCESS:
                 if attempt == max_attempts - 1:
                     logger.warning("⚠️ Max validation attempts reached")
         
-        # Generate the final patch from the last (hopefully valid) operations
+        if not validation_attempts:
+            notification = "Validation failed before producing any JSON operations; skipping diff generation."
+            logger.warning(notification)
+            return {
+                "success": False,
+                "json_operations": "",
+                "unified_diff": "",
+                "validation": {},
+                "validation_attempts": [],
+                "error": notification,
+                "notification": notification,
+            }
+
+        # Generate the final patch only if validation succeeded
         final_operations = validation_attempts[-1]["json_operations"]
         final_validation = validation_attempts[-1]["validation"]
-        
-        patch_result = self.patch_tool.generate_patch(final_operations)
+        validation_passed = final_validation.get("valid", False)
+
+        notification = None
+        if validation_passed:
+            patch_result = self.patch_tool.generate_patch(final_operations)
+        else:
+            issues = final_validation.get("issues", [])
+            issue_summary = "; ".join(issues) if issues else "Unknown validation issue"
+            notification = (
+                f"Validation failed after {len(validation_attempts)} attempt(s); "
+                f"skipping diff generation: {issue_summary}"
+            )
+            logger.warning(notification)
+            patch_result = {
+                "success": False,
+                "unified_diff": "",
+                "error": notification,
+            }
 
         # Phase 2: Enhanced conversation memory with validation context
         interaction = {
@@ -159,16 +224,18 @@ VALIDATION PROCESS:
             "final_validation": final_validation,
             "patch_success": patch_result.get("success", False),
             "learning_context": self._extract_learning_context(validation_attempts),
+            "notification": notification,
         }
         self.conversation_history.append(interaction)
 
         return {
-            "success": patch_result.get("success", False) and final_validation.get("valid", False),
+            "success": validation_passed and patch_result.get("success", False),
             "json_operations": final_operations,
             "unified_diff": patch_result.get("unified_diff", ""),
             "validation": final_validation,
             "validation_attempts": validation_attempts,
             "error": patch_result.get("error"),
+            "notification": notification,
             "raw_response": validation_attempts[-1]["llm_response"],
         }
 
@@ -186,9 +253,18 @@ VALIDATION PROCESS:
         Returns:
             Enhanced prompt with validation context
         """
+        # Extract file paths from context for additional safety guidance
+        import re
+        file_pattern = r"=== File: (.*?) ==="
+        target_files = re.findall(file_pattern, context)
+        
+        file_guidance = ""
+        if target_files:
+            file_guidance = f"\nValidated Target Files: {', '.join(target_files)}\nIMPORTANT: Use ONLY these exact file paths in your operations.\n"
+        
         base_prompt = f"""
 Plan: {plan_summary}
-
+{file_guidance}
 Context:
 {context}
 

@@ -11,6 +11,7 @@ from ..git_utils import (
     open_pull_request,
     get_base_branch,
     tag_branch_with_sentries_metadata,
+    current_sha,
 )
 from ..runner_common import get_logger
 
@@ -197,7 +198,8 @@ class GitOperationsTool:
             
             # Create branch and tag with metadata
             actual_branch = create_branch(branch_name, sentry_type)
-            tag_branch_with_sentries_metadata(actual_branch, sentry_type)
+            sha = current_sha()
+            tag_branch_with_sentries_metadata(actual_branch, sentry_type, sha)
             
             return {
                 "success": True,
@@ -232,10 +234,20 @@ class GitOperationsTool:
             logger.info(f"📝 Committing changes: {message[:50]}...")
             
             if files:
-                # Commit specific files (would need git_utils enhancement)
-                logger.info(f"Committing specific files: {files}")
-                # For now, use commit_all since git_utils doesn't have file-specific commit
-                commit_all(message)
+                notice = (
+                    "File-specific commits are not supported yet. "
+                    "Commit previously staged changes or wait for targeted commit support in Phase 3."
+                )
+                logger.warning(
+                    "Attempted to commit specific files %s, but this is not supported yet.",
+                    files,
+                )
+                return {
+                    "success": False,
+                    "error": "File-specific commits are not supported yet.",
+                    "message": notice,
+                    "unsupported": True,
+                }
             else:
                 # Commit all staged changes
                 commit_all(message)

@@ -1,19 +1,43 @@
 # Makefile for Sentries observability metrics
 
-.PHONY: setup sample-data benchmarks reports streamlit check-determinism clean
+.PHONY: setup sample-data benchmarks reports streamlit check-determinism clean lint test incident help
 
 # Default target
 all: setup sample-data benchmarks reports
 
-# Setup environment and install dependencies
+# Development targets
 setup:
-	@echo "🔧 Setting up observability environment..."
+	@echo "🔧 Setting up development environment..."
 	python -m pip install --upgrade pip
 	pip install -e .
 	pip install -e .[viz]
+	pre-commit install
 	@echo "✅ Setup complete"
 
-# Generate synthetic sample data
+lint:
+	@echo "🧹 Running code quality checks..."
+	pre-commit run --all-files
+	@echo "✅ Linting complete"
+
+test:
+	@echo "🧪 Running test suite..."
+	python -m pytest tests/ -v --cov=sentries --cov-report=html --cov-report=term
+	@echo "✅ Tests complete"
+
+incident:
+	@echo "🚨 Running incident response diagnostics..."
+	@echo "System Status:"
+	@python -c "import sys; print(f'Python: {sys.version}')"
+	@echo "Repository Status:"
+	@git status --porcelain || echo "Not a git repository"
+	@echo "Package Status:"
+	@pip show sentries || echo "Package not installed"
+	@echo "Environment:"
+	@echo "  SENTRIES_FORCE_LOCAL: $${SENTRIES_FORCE_LOCAL:-not set}"
+	@echo "  SENTRIES_SIMULATION_MODE: $${SENTRIES_SIMULATION_MODE:-not set}"
+	@echo "✅ Diagnostics complete"
+
+# Observability targets (preserved)
 sample-data:
 	@echo "📊 Generating synthetic sample data..."
 	python -c "
@@ -170,11 +194,19 @@ clean:
 # Help
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "Development workflow:"
 	@echo "  setup          - Install dependencies and setup environment"
+	@echo "  lint           - Run code quality checks (black, isort, flake8, mypy)"
+	@echo "  test           - Run test suite with coverage reporting"
+	@echo "  incident       - Run diagnostic checks for troubleshooting"
+	@echo ""
+	@echo "Observability workflow:"
 	@echo "  sample-data    - Generate synthetic sample data"
-	@echo "  benchmarks     - Run observability benchmarks"
+	@echo "  benchmarks     - Run observability benchmarks" 
 	@echo "  reports        - Generate deterministic PNG reports"
 	@echo "  streamlit      - Run interactive Streamlit app"
 	@echo "  check-determinism - Verify reports are deterministic"
 	@echo "  clean          - Remove generated files"
+	@echo ""
 	@echo "  help           - Show this help message"

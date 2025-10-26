@@ -19,10 +19,11 @@ class PlannerAgent:
     structured plans for fixing them.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, llm_logger=None):
         self.model_name = model_name
         self.llm = SentryLLMWrapper(model_name, "planner")
         self.analysis_tool = TestAnalysisTool()
+        self.llm_logger = llm_logger
 
         self.conversation_history = []
         self.system_message = """You are TestSentry's planner agent.
@@ -94,7 +95,20 @@ DECISION RULES:
                 {"role": "user", "content": planning_prompt},
             ]
 
+            # Log LLM interaction if logger is available
+            if self.llm_logger:
+                self.llm_logger("planner", "system", self.system_message, self.model_name, 
+                               {"context": "planning_prompt"})
+                self.llm_logger("planner", "user", planning_prompt, self.model_name,
+                               {"failure_type": first_failure['failure_type'], 
+                                "test_file": first_failure['test_file']})
+
             response = self.llm.generate(messages)
+
+            # Log LLM response
+            if self.llm_logger:
+                self.llm_logger("planner", "assistant", response, self.model_name,
+                               {"planning_phase": "analyze_and_plan"})
 
             # Phase 2: Enhanced conversation memory with learning context
             interaction = {
@@ -250,8 +264,17 @@ Consider these patterns when creating your plan."""
         for interaction in self.conversation_history:
             input_data = interaction.get('input', {})
             if input_data.get('failure_type') == failure_type:
+                # Check for explicit plan_success field or infer from successful_strategies
                 learning = interaction.get('learning_context', {})
-                similar_cases.append(learning.get('plan_success', False))
+                if 'plan_success' in learning:
+                    similar_cases.append(learning['plan_success'])
+                elif 'successful_strategies' in learning:
+                    # If there are successful strategies, assume success
+                    has_success = len(learning['successful_strategies']) > 0
+                    similar_cases.append(has_success)
+                else:
+                    # Assume neutral/partial success for recorded interactions
+                    similar_cases.append(True)
         
         if similar_cases:
             success_rate = sum(similar_cases) / len(similar_cases)

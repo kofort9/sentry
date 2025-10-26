@@ -630,3 +630,30 @@ The system includes comprehensive observability:
 - **Interactive dashboard** (optional Streamlit app)
 
 See the observability documentation for details on metrics and monitoring.
+
+## 📝 **Session Notes / Future Ideas**
+
+### Current Architecture
+- Sequential topology for now: `Trigger → Ingest → Planner (LLM) → Patcher → Reviewer → stop`
+- Plan to add **ContextBuilder Sidecar** (non-LLM): ripgrep/ctags/AST + SQLite FTS; produce `top_k_context.json`
+- Current JIT context budget: smart extractor caps packs at ~6 KB (character budget) with AST-aware trimming
+- Tight token caps today: Planner `max_tokens=600` @ `temp=0.2`; Patcher `max_tokens=500` @ `temp=0.1`; reviewer deferred
+- JSON-only messages between agents; schema validation; fail-safe → open issue
+- Local-first via OpenAI-compatible endpoint (Ollama/llama.cpp); mock agents allowed
+
+### Design Philosophy
+- Resource-conscious approach with configurable complexity
+- Start simple, scale smart based on available compute
+- Framework supports both linear pipelines and complex multi-agent topologies
+- Graceful degradation when resources are constrained
+
+## 🛣️ **Roadmap**
+
+- [ ] **Framework generalization** for multi-domain workflows
+- [ ] **ContextBuilder sidecar** implementation  
+- [ ] **Enhanced error recovery** and retry logic
+- [ ] **Production deployment** guidelines
+- [ ] **Performance optimization** and resource management
+- [ ] **Integration testing** and validation pipeline
+- [ ] **Documentation** and onboarding improvements
+- [ ] **Multi-domain examples** (DocSentry, CodeSentry, DataSentry)

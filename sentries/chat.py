@@ -22,6 +22,11 @@ def is_simulation_mode() -> bool:
 
 def has_api_key() -> bool:
     """Check if we have any API keys available."""
+    # Force local mode if SENTRIES_FORCE_LOCAL is set
+    if os.getenv("SENTRIES_FORCE_LOCAL", "").lower() in ("true", "1", "yes"):
+        logger.info("🏠 SENTRIES_FORCE_LOCAL is set - forcing local LLM mode")
+        return False
+        
     return bool(
         os.getenv("OPENAI_API_KEY")
         or os.getenv("ANTHROPIC_API_KEY")
