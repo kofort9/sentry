@@ -2,7 +2,7 @@
 
 import datetime
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ..runner_common import get_logger
 from .llm import SentryLLMWrapper
@@ -26,7 +26,7 @@ class PatcherAgent:
         self.validation_tool = PatchValidationTool()
         self.llm_logger = llm_logger
 
-        self.conversation_history = []
+        self.conversation_history: List[Dict[str, Any]] = []
         self.system_message = """You are TestSentry's patcher agent.
 Your job is to generate JSON find/replace operations from plans.
 
@@ -125,7 +125,7 @@ VALIDATION PROCESS:
 
             logger.info(f"✅ Validated {len(target_files)} target files exist: {target_files}")
 
-        validation_attempts = []
+        validation_attempts: List[Dict[str, Any]] = []
 
         for attempt in range(max_attempts):
             logger.info(f"🔄 Validation attempt {attempt + 1}/{max_attempts}")
@@ -328,7 +328,7 @@ Focus on making minimal changes to make tests pass.
             return {}
 
         all_issues = []
-        common_patterns = {}
+        common_patterns: Dict[str, Any] = {}
 
         for attempt in validation_attempts:
             validation = attempt.get("validation", {})

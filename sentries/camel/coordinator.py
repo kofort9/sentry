@@ -1,7 +1,7 @@
 """Coordinator for the CAMEL planner/patcher workflow."""
 
 import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ..runner_common import get_logger
 from .error_recovery import global_error_recovery
@@ -21,7 +21,7 @@ class CAMELCoordinator:
     def __init__(self, planner_model: str, patcher_model: str, llm_logger=None):
         self.planner = PlannerAgent(planner_model, llm_logger=llm_logger)
         self.patcher = PatcherAgent(patcher_model, llm_logger=llm_logger)
-        self.workflow_history = []
+        self.workflow_history: List[Any] = []
         self.llm_logger = llm_logger
 
         logger.info("🚀 Created CAMEL coordinator with planner and patcher agents")

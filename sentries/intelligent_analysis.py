@@ -116,7 +116,7 @@ class FailureClassifier:
         lines = pytest_output.split("\n")
 
         current_failure = None
-        traceback_lines = []
+        traceback_lines: List[str] = []
         in_traceback = False
 
         for line in lines:

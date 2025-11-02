@@ -355,13 +355,13 @@ class ErrorRecoverySystem:
             }
 
         # Count by category
-        by_category = {}
+        by_category: Dict[str, int] = {}
         for error in self.error_history:
             category = error.category.value
             by_category[category] = by_category.get(category, 0) + 1
 
         # Count by severity
-        by_severity = {}
+        by_severity: Dict[str, int] = {}
         for error in self.error_history:
             severity = error.severity.value
             by_severity[severity] = by_severity.get(severity, 0) + 1

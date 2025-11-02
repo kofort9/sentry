@@ -2,7 +2,7 @@
 
 import datetime
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ..runner_common import get_logger
 from .llm import SentryLLMWrapper
@@ -25,7 +25,7 @@ class PlannerAgent:
         self.analysis_tool = TestAnalysisTool()
         self.llm_logger = llm_logger
 
-        self.conversation_history = []
+        self.conversation_history: List[Dict[str, Any]] = []
         self.system_message = """You are TestSentry's planner agent.
 Your job is to analyze test failures and create structured plans for fixing them.
 

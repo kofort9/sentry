@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -28,8 +28,8 @@ class TestSentryObservability:
         self.sp_tokenizer = None
 
         # Metrics storage
-        self.current_events = []
-        self.baseline_snapshots = {}
+        self.current_events: List[Any] = []
+        self.baseline_snapshots: Dict[str, Any] = {}
 
     def initialize_tokenizers(self):
         """Initialize BPE and SentencePiece tokenizers."""
@@ -165,7 +165,7 @@ class TestSentryObservability:
         result = tokenization_results[algorithm]
 
         # Count token frequencies
-        token_counts = {}
+        token_counts: Dict[int, int] = {}
         for token_id in result.token_ids:
             token_counts[token_id] = token_counts.get(token_id, 0) + 1
 

@@ -252,7 +252,7 @@ class ToolRegistry:
         all_deps.update(tool_names)
 
         # Sort by dependencies (simple topological sort)
-        ordered_names = []
+        ordered_names: List[str] = []
         remaining = set(all_deps)
 
         while remaining:
@@ -273,7 +273,7 @@ class ToolRegistry:
 
     def get_registry_info(self) -> Dict[str, Any]:
         """Get information about the registry state."""
-        categories = {}
+        categories: Dict[str, List[str]] = {}
         for metadata in self._metadata.values():
             category = metadata.category.value
             if category not in categories:
