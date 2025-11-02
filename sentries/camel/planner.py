@@ -2,7 +2,7 @@
 
 import datetime
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ..runner_common import get_logger
 from .llm import SentryLLMWrapper
@@ -25,7 +25,7 @@ class PlannerAgent:
         self.analysis_tool = TestAnalysisTool()
         self.llm_logger = llm_logger
 
-        self.conversation_history = []
+        self.conversation_history: List[Dict[str, str]] = []
         self.system_message = """You are TestSentry's planner agent.
 Your job is to analyze test failures and create structured plans for fixing them.
 
@@ -225,13 +225,13 @@ Consider these patterns when creating your plan."""
 
         # Look for similar failure types or files in history
         for interaction in self.conversation_history[-5:]:  # Last 5 interactions
-            input_data = interaction.get("input", {})
+            input_data: Dict[str, Any] = interaction.get("input", {})  # type: ignore
             if (
                 input_data.get("failure_type") == failure_type
                 or input_data.get("test_file") == test_file
             ):
 
-                learning = interaction.get("learning_context", {})
+                learning: Dict[str, Any] = interaction.get("learning_context", {})  # type: ignore
                 if learning.get("successful_strategies"):
                     relevant_patterns.extend(learning["successful_strategies"])
 
@@ -280,10 +280,10 @@ Consider these patterns when creating your plan."""
         similar_cases = []
 
         for interaction in self.conversation_history:
-            input_data = interaction.get("input", {})
+            input_data: Dict[str, Any] = interaction.get("input", {})  # type: ignore
             if input_data.get("failure_type") == failure_type:
                 # Check for explicit plan_success field or infer from successful_strategies
-                learning = interaction.get("learning_context", {})
+                learning: Dict[str, Any] = interaction.get("learning_context", {})  # type: ignore
                 if "plan_success" in learning:
                     similar_cases.append(learning["plan_success"])
                 elif "successful_strategies" in learning:
@@ -331,11 +331,11 @@ Consider these patterns when creating your plan."""
         successful_strategies = []
 
         for interaction in self.conversation_history:
-            input_data = interaction.get("input", {})
+            input_data: Dict[str, Any] = interaction.get("input", {})  # type: ignore
             if input_data.get("failure_type"):
                 failure_types.append(input_data["failure_type"])
 
-            learning = interaction.get("learning_context", {})
+            learning: Dict[str, Any] = interaction.get("learning_context", {})  # type: ignore
             if learning.get("plan_success"):
                 successful_strategies.append("successful_plan")
 

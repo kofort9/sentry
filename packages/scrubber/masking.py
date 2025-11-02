@@ -2,7 +2,7 @@
 
 import hashlib
 import hmac
-from typing import Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 
 def mask_span(
@@ -125,7 +125,7 @@ def get_token_boundaries(
 
 def validate_masking(
     original_text: str, masked_text: str, expected_spans: List[Tuple[int, int, str]]
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Validate that masking was applied correctly.
 

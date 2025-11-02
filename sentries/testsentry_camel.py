@@ -35,10 +35,10 @@ try:
 except ImportError:
     OBSERVABILITY_AVAILABLE = False
 
-    def save_observability_metrics() -> None:
+    def save_observability_metrics():
         pass
 
-    def get_observability() -> None:
+    def get_observability():  # type: ignore
         return None
 
 
