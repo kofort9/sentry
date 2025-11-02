@@ -267,3 +267,8 @@ warehouse/
 !reports/*.png
 !reports/*.csv
 !reports/.keep
+
+# Branch cleanup summaries and temporary analysis docs
+BRANCH_CLEANUP_SUMMARY.md
+*_CLEANUP_SUMMARY.md
+*_CLEANUP_*.md

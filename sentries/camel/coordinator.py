@@ -21,7 +21,7 @@ class CAMELCoordinator:
     def __init__(self, planner_model: str, patcher_model: str, llm_logger=None):
         self.planner = PlannerAgent(planner_model, llm_logger=llm_logger)
         self.patcher = PatcherAgent(patcher_model, llm_logger=llm_logger)
-        self.workflow_history: List[Any] = []
+        self.workflow_history: List[Dict[str, Any]] = []
         self.llm_logger = llm_logger
 
         logger.info("🚀 Created CAMEL coordinator with planner and patcher agents")

@@ -31,16 +31,16 @@ try:
 except ImportError:
     OBSERVABILITY_AVAILABLE = False
 
-    def log_llm_interaction(*args, **kwargs):
+    def log_llm_interaction(prompt: str, response: str, **kwargs):
         pass
 
-    def analyze_text_for_pii(*args, **kwargs):
+    def analyze_text_for_pii(text: str):  # type: ignore[misc]
         return {}
 
     def save_observability_metrics():
         pass
 
-    def get_observability():
+    def get_observability():  # type: ignore
         return None
 
 

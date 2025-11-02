@@ -26,7 +26,7 @@ class PatcherAgent:
         self.validation_tool = PatchValidationTool()
         self.llm_logger = llm_logger
 
-        self.conversation_history: List[Dict[str, Any]] = []
+        self.conversation_history: List[Dict[str, str]] = []
         self.system_message = """You are TestSentry's patcher agent.
 Your job is to generate JSON find/replace operations from plans.
 
@@ -209,8 +209,9 @@ VALIDATION PROCESS:
             }
 
         # Generate the final patch only if validation succeeded
-        final_operations = validation_attempts[-1]["json_operations"]
-        final_validation = validation_attempts[-1]["validation"]
+        final_attempt = validation_attempts[-1]
+        final_operations: str = final_attempt["json_operations"]
+        final_validation: Dict[str, Any] = final_attempt["validation"]
         validation_passed = final_validation.get("valid", False)
 
         notification = None
@@ -328,7 +329,7 @@ Focus on making minimal changes to make tests pass.
             return {}
 
         all_issues = []
-        common_patterns: Dict[str, Any] = {}
+        common_patterns: Dict[str, int] = {}
 
         for attempt in validation_attempts:
             validation = attempt.get("validation", {})
