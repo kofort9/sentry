@@ -184,7 +184,7 @@ class BaseCoordinator(ABC):
         self, step: WorkflowStep, workflow_context: WorkflowContext
     ) -> List[Any]:
         """Execute agents sequentially."""
-        results = []
+        results: List[Any] = []
 
         for agent_name in step.agents:
             agent = self.get_agent(agent_name)

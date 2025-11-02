@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -255,7 +255,7 @@ def remove_overlapping_spans(spans: List[PIISpan]) -> List[PIISpan]:
     return result
 
 
-def get_pii_statistics(spans: List[PIISpan], text: str) -> Dict[str, any]:
+def get_pii_statistics(spans: List[PIISpan], text: str) -> Dict[str, Any]:
     """Get statistics about detected PII spans."""
     if not spans:
         return {
@@ -269,7 +269,7 @@ def get_pii_statistics(spans: List[PIISpan], text: str) -> Dict[str, any]:
     total_chars = sum(span.end - span.start for span in spans)
     text_length = len(text)
 
-    pii_types = {}
+    pii_types: Dict[str, int] = {}
     for span in spans:
         pii_types[span.pii_type] = pii_types.get(span.pii_type, 0) + 1
 

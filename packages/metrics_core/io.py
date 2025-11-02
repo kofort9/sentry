@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import duckdb
 import pandas as pd
@@ -126,6 +126,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         # Convert metadata to JSON strings
         events_copy = events.copy()
         if "metadata" in events_copy.columns:
@@ -146,6 +147,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         self.conn.execute(
             """
             INSERT INTO snapshots
@@ -168,6 +170,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         self.conn.execute(
             """
             INSERT INTO drift_metrics
@@ -190,6 +193,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         self.conn.execute(
             """
             INSERT INTO pii_detections
@@ -213,6 +217,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         self.conn.execute(
             """
             INSERT INTO scrubber_metrics
@@ -244,8 +249,9 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         query = "SELECT * FROM events WHERE 1=1"
-        params = []
+        params: List[Union[str, datetime]] = []
 
         if service:
             query += " AND service = ?"
@@ -272,6 +278,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         query = """
             SELECT * FROM snapshots
             WHERE service = ? AND algorithm = ?
@@ -286,6 +293,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         query = """
             SELECT dm.*, s1.timestamp as baseline_ts, s2.timestamp as current_ts
             FROM drift_metrics dm
@@ -305,6 +313,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         if algorithm:
             query = "SELECT * FROM scrubber_metrics WHERE algorithm = ? ORDER BY created_at DESC"
             return self.conn.execute(query, [algorithm]).df()
@@ -317,6 +326,7 @@ class DuckDBManager:
         if not self.conn:
             self.connect()
 
+        assert self.conn is not None, "Connection should be established"
         query = f"SELECT * FROM {table_name}"
         df = self.conn.execute(query).df()
         df.to_parquet(output_path, index=False)

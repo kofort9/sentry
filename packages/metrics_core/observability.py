@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -28,8 +28,8 @@ class TestSentryObservability:
         self.sp_tokenizer = None
 
         # Metrics storage
-        self.current_events = []
-        self.baseline_snapshots = {}
+        self.current_events: List[Event] = []
+        self.baseline_snapshots: Dict[str, Snapshot] = {}
 
     def initialize_tokenizers(self):
         """Initialize BPE and SentencePiece tokenizers."""
@@ -103,51 +103,55 @@ class TestSentryObservability:
         if not self.bpe_tokenizer or not self.sp_tokenizer:
             self.initialize_tokenizers()
 
-        results = {}
+        results: Dict[str, TokenizationResult] = {}
 
         # BPE tokenization
         try:
-            bpe_ids = tokenize_text(text, self.bpe_tokenizer, "bpe")
-            bpe_tokens = self.bpe_tokenizer.decode(bpe_ids)
+            if self.bpe_tokenizer is not None:
+                bpe_ids = tokenize_text(text, self.bpe_tokenizer, "bpe")
+                bpe_tokens = self.bpe_tokenizer.decode(bpe_ids)
 
-            results["bpe"] = TokenizationResult(
-                text=text,
-                token_ids=bpe_ids,
-                tokens=bpe_tokens.split(),
-                algorithm="bpe",
-                vocab_size=32000,
-                char_to_token_map={},  # Simplified for now
-                token_to_char_map={},
-            )
+                results["bpe"] = TokenizationResult(
+                    text=text,
+                    token_ids=bpe_ids,
+                    tokens=bpe_tokens.split(),
+                    algorithm="bpe",
+                    vocab_size=32000,
+                    char_to_token_map={},  # Simplified for now
+                    token_to_char_map={},
+                )
 
-            self.logger.info(f"BPE tokenization: {len(bpe_ids)} tokens")
+                self.logger.info(f"BPE tokenization: {len(bpe_ids)} tokens")
 
         except Exception as e:
             self.logger.error(f"BPE tokenization failed: {e}")
 
         # SentencePiece tokenization
         try:
-            sp_ids = tokenize_text(text, self.sp_tokenizer, "sp")
-            sp_tokens = self.sp_tokenizer.decode(sp_ids)
+            if self.sp_tokenizer is not None:
+                sp_ids = tokenize_text(text, self.sp_tokenizer, "sp")
+                sp_tokens = self.sp_tokenizer.decode(sp_ids)
 
-            results["sp"] = TokenizationResult(
-                text=text,
-                token_ids=sp_ids,
-                tokens=sp_tokens.split(),
-                algorithm="sp",
-                vocab_size=32000,
-                char_to_token_map={},  # Simplified for now
-                token_to_char_map={},
-            )
+                results["sp"] = TokenizationResult(
+                    text=text,
+                    token_ids=sp_ids,
+                    tokens=sp_tokens.split(),
+                    algorithm="sp",
+                    vocab_size=32000,
+                    char_to_token_map={},  # Simplified for now
+                    token_to_char_map={},
+                )
 
-            self.logger.info(f"SP tokenization: {len(sp_ids)} tokens")
+                self.logger.info(f"SP tokenization: {len(sp_ids)} tokens")
 
         except Exception as e:
             self.logger.error(f"SP tokenization failed: {e}")
 
         return results
 
-    def create_snapshot(self, service: str, release: str, algorithm: str) -> Snapshot:
+    def create_snapshot(
+        self, service: str, release: str, algorithm: Literal["bpe", "sp"]
+    ) -> Optional[Snapshot]:
         """Create a snapshot of current tokenization metrics."""
         if not self.current_events:
             return None
@@ -165,7 +169,7 @@ class TestSentryObservability:
         result = tokenization_results[algorithm]
 
         # Count token frequencies
-        token_counts = {}
+        token_counts: Dict[int, int] = {}
         for token_id in result.token_ids:
             token_counts[token_id] = token_counts.get(token_id, 0) + 1
 

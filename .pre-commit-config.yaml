@@ -39,3 +39,4 @@ repos:
         additional_dependencies: [types-requests, types-PyYAML, types-toml]
         args: [--ignore-missing-imports, --no-strict-optional, --disable-error-code=comparison-overlap, --disable-error-code=unreachable, --disable-error-code=no-any-return]
         types: [python]
+        exclude: ^examples/

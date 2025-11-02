@@ -1,6 +1,7 @@
 """Support tools for CAMEL planner and patcher agents."""
 
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 from ..git_utils import (
@@ -119,7 +120,7 @@ class PatchValidationTool:
         try:
             data = json.loads(json_operations)
 
-            validation_result = {"valid": True, "issues": [], "suggestions": []}
+            validation_result: Dict[str, Any] = {"valid": True, "issues": [], "suggestions": []}
 
             if "ops" not in data:
                 validation_result["valid"] = False
@@ -282,20 +283,27 @@ class GitOperationsTool:
             base_branch = get_base_branch()
 
             # Use git_utils to create PR
-            pr_result = open_pull_request(
+            pr_number = open_pull_request(
+                base_branch=base_branch,
+                head_branch=head_branch,
                 title=title,
                 body=body,
-                base=base_branch,
-                head=head_branch,
             )
 
+            if pr_number:
+                repo = os.getenv("GITHUB_REPOSITORY", "unknown")
+                pr_url = f"https://github.com/{repo}/pull/{pr_number}"
+            else:
+                pr_url = "PR creation may have failed"
+
             return {
-                "success": True,
-                "pr_url": pr_result.get("url", "PR created"),
+                "success": pr_number is not None,
+                "pr_url": pr_url,
+                "pr_number": pr_number,
                 "title": title,
                 "base_branch": base_branch,
                 "head_branch": head_branch or "current",
-                "message": "PR created successfully",
+                "message": "PR created successfully" if pr_number else "PR creation failed",
             }
 
         except Exception as exc:
