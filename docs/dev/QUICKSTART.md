@@ -44,8 +44,8 @@ pip install git+https://github.com/kofort9/sentries.git
 ```bash
 # Check if CLI tools are available
 testsentry --help
+testsentry-camel --help
 docsentry --help
-codesentry --help
 
 # Check if package can be imported
 python -c "import sentries; print('✅ Sentries installed successfully!')"
@@ -53,10 +53,9 @@ python -c "import sentries; print('✅ Sentries installed successfully!')"
 
 ### **3. Set Up GitHub Actions**
 
-Copy these workflow files to your `.github/workflows/` directory:
+Copy the workflow file to your `.github/workflows/` directory:
 
-- **`.github/workflows/test-sentry.yml`** - For automated test maintenance
-- **`.github/workflows/doc-sentry.yml`** - For automated documentation updates
+- **`.github/workflows/test-sentries.yml`** - Comprehensive CI/CD workflow with test maintenance
 
 ### **4. Configure Self-Hosted Runner**
 
@@ -100,12 +99,6 @@ GITHUB_TOKEN=your_token \
 docsentry
 ```
 
-### **Run CodeSentry Manually**
-```bash
-# Analyze code for testing and documentation opportunities
-codesentry
-```
-
 ## 📋 **What Sentries Do**
 
 ### **TestSentry**
@@ -113,18 +106,13 @@ codesentry
 - 🛠️ **Generates** fixes using LLM
 - 📝 **Creates** patches and PRs
 - 🏷️ **Labels** PRs appropriately
+- 🎭 **Two implementations**: Original (`testsentry`) and CAMEL-based (`testsentry-camel`)
 
 ### **DocSentry**
-- 📚 **Identifies** outdated documentation
+- 📚 **Identifies** outdated documentation (planned but not yet implemented)
 - ✍️ **Updates** docstrings and READMEs
 - 🔄 **Creates** documentation PRs
 - 🎯 **Focuses** on code-related docs
-
-### **CodeSentry**
-- 🔍 **Scans** for untested functions
-- 📊 **Analyzes** code coverage gaps
-- 🎯 **Identifies** documentation needs
-- 📋 **Reports** improvement opportunities
 
 ## 🚨 **Requirements**
 
