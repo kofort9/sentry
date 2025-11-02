@@ -65,11 +65,8 @@ testsentry --help
 # Fix basic failing tests (simple assertions, basic imports)
 testsentry
 
-# Check status
-sentries-status
-
-# Clean up artifacts
-sentries-cleanup --dry-run
+# Or use the CAMEL-based implementation
+testsentry-camel
 ```
 
 ### What Doesn't Work
@@ -86,6 +83,7 @@ sentries-cleanup --dry-run
 - **`sentries/intelligent_analysis.py`**: ✅ **Working** - Test failure classification
 - **`sentries/git_utils.py`**: ✅ **Working** - Git operations and PR management
 - **`sentries/testsentry.py`**: 🟡 **Partially Working** - Basic test fixes only
+- **`sentries/testsentry_camel.py`**: ✅ **Working** - CAMEL-based multi-agent implementation
 - **`sentries/docsentry.py`**: ❌ **Not Working** - Never implemented
 - **`sentries/chat.py`**: ✅ **Working** - LLM communication layer
 
@@ -93,6 +91,29 @@ sentries-cleanup --dry-run
 
 1. **Planner Model** (`MODEL_PLAN`): Analyzes context and creates numbered plans
 2. **Patcher Model** (`MODEL_PATCH`): Generates unified diffs based on plans
+
+### CAMEL Multi-Agent Architecture
+
+Sentries includes a **CAMEL-based multi-agent system** (`sentries/camel/`) that implements:
+- **PlannerAgent**: Analyzes test failures and creates structured plans
+- **PatcherAgent**: Generates JSON operations from plans with validation
+- **CAMELCoordinator**: Orchestrates agent interactions with error recovery
+- **Tool-based architecture**: Wraps existing utilities (analysis, patching) as agent tools
+
+**📖 Learn More**: See [`docs/notes/camel-sessions/`](docs/notes/camel-sessions/) for implementation details and phase-by-phase progress notes.
+
+### Reusable Framework
+
+The project includes a **reusable agentic framework** (`sentries/framework/`) extracted from the CAMEL implementation:
+- **Base agent classes** for building domain-specific agents
+- **Workflow orchestration** with sequential, parallel, and conditional steps
+- **Tool system** for reusable operations
+- **Observability** and error recovery built-in
+- **LLM abstractions** supporting multiple backends
+
+This framework enables rapid development of multi-agent workflows while maintaining consistency, observability, and reusability.
+
+**📖 Learn More**: See [`docs/architecture/FRAMEWORK_GUIDE.md`](docs/architecture/FRAMEWORK_GUIDE.md) for detailed documentation on building custom workflows, or check out the example implementation in [`examples/docsentry_workflow.py`](examples/docsentry_workflow.py).
 
 ### Safety Features
 
@@ -256,25 +277,59 @@ Verifies:
 sentries/
 ├── pyproject.toml              # Dependencies and console scripts
 ├── README.md                   # This documentation
-├── PROJECT_STATUS_AUDIT.md     # Detailed project status
 ├── .gitignore                  # Python and project-specific ignores
 ├── sentries/                   # Core package
 │   ├── __init__.py            # Package initialization
 │   ├── banner.py              # Centralized ASCII art banner
 │   ├── chat.py                # LLM communication (Ollama + OpenAI-style)
+│   ├── chat_simulation.py     # Simulation mode for CI/testing
 │   ├── prompts.py             # System prompts for planner/patcher models
 │   ├── diff_utils.py          # Diff validation and application
 │   ├── git_utils.py           # Git operations and PR management
 │   ├── runner_common.py       # Shared utilities and constants
 │   ├── testsentry.py          # TestSentry CLI (test fixes)
+│   ├── testsentry_camel.py    # CAMEL-based TestSentry CLI
 │   ├── docsentry.py           # DocSentry CLI (doc updates) - NOT WORKING
 │   ├── intelligent_analysis.py # Smart test failure analysis
 │   ├── patch_engine.py        # Patch generation engine
-│   └── smart_prompts.py       # Experimental prompts - NOT INTEGRATED
+│   ├── smart_prompts.py       # Experimental prompts - NOT INTEGRATED
+│   ├── camel/                 # CAMEL multi-agent framework
+│   │   ├── coordinator.py    # CAMEL workflow coordinator
+│   │   ├── planner.py        # Planner agent implementation
+│   │   ├── patcher.py        # Patcher agent implementation
+│   │   ├── llm.py            # LLM wrapper for CAMEL
+│   │   ├── tools.py          # Agent tools (analysis, patching)
+│   │   └── error_recovery.py # Error recovery system
+│   └── framework/             # Reusable agentic framework
+│       ├── agents.py          # Base agent classes
+│       ├── coordinators.py    # Workflow orchestration
+│       ├── tools.py           # Tool system
+│       ├── llm.py            # LLM integration abstractions
+│       ├── observability.py  # Monitoring and logging
+│       ├── error_recovery.py # Error handling and retry logic
+│       └── workflows.py      # Workflow builder and engine
 ├── scripts/                    # Standalone utilities
 │   ├── setup_sentries.py      # Automated setup and configuration
-│   ├── update_models.py       # LLM model management
+│   ├── check-runner-status.sh # Check GitHub runner status
+│   ├── generate_reports.py    # Generate observability reports
+│   ├── launch_dashboard.py    # Launch metrics dashboard
+│   ├── demo_phase3.py         # CAMEL phase 3 demo
+│   ├── setup-self-hosted-runner.sh # Runner setup script
 │   └── smoke.py               # Health check and connectivity test
+├── docs/                       # Documentation
+│   ├── architecture/          # Framework and design docs
+│   │   ├── FRAMEWORK_GUIDE.md # Reusable framework guide
+│   │   └── WORKFLOW_ENHANCEMENTS.md # Workflow docs
+│   ├── dev/                   # Development guides
+│   │   ├── INSTALL.md        # Installation guide
+│   │   ├── QUICKSTART.md     # Quick start guide
+│   │   ├── TESTING.md        # Testing guide
+│   │   └── USAGE_EXAMPLES.md # Usage examples
+│   ├── notes/                # Historical notes
+│   │   ├── camel-sessions/   # CAMEL implementation notes
+│   │   └── project-status/  # Project status docs
+│   │       └── PROJECT_STATUS_AUDIT.md # Detailed project status
+│   └── 01-metrics-overview.md # Observability overview
 └── .github/workflows/          # GitHub Actions integration
     └── test-sentries.yml      # Comprehensive CI/CD workflow
 ```
@@ -292,21 +347,14 @@ The sentries automatically tag all created artifacts for easy identification:
 - **Labels**: Automatic labels like `ai-generated`, `sentries`, `sentry-testsentry`
 - **Metadata**: PR descriptions include sentries metadata section
 
-### **Cleanup Utilities**
+### **Artifact Management**
 
-```bash
-# Show all sentries artifacts
-sentries-status
+Artifacts (branches and PRs) created by Sentries are automatically tagged with metadata:
+- **Branch naming**: `ai-test-fixes/<sha>-<timestamp>`
+- **PR labels**: `ai-generated`, `sentries`, `sentry-testsentry`
+- **Metadata**: Included in PR descriptions and branch metadata files
 
-# See what would be cleaned up (dry run)
-sentries-cleanup --dry-run
-
-# Clean up everything
-sentries-cleanup --force
-
-# Clean up artifacts older than 7 days
-sentries-cleanup --max-age-days 7
-```
+To manage artifacts manually, use Git commands or GitHub's web interface.
 
 ## 🆘 Troubleshooting
 
@@ -629,7 +677,15 @@ The system includes comprehensive observability:
 - **Deterministic reports** generated in CI
 - **Interactive dashboard** (optional Streamlit app)
 
-See the observability documentation for details on metrics and monitoring.
+See `docs/01-metrics-overview.md` for details on metrics and monitoring.
+
+## 📚 **Additional Documentation**
+
+- **Framework Guide**: See `docs/architecture/FRAMEWORK_GUIDE.md` for building custom multi-agent workflows
+- **CAMEL Implementation**: See `docs/notes/camel-sessions/` for CAMEL architecture details
+- **Project Status**: See `docs/notes/project-status/PROJECT_STATUS_AUDIT.md` for detailed project status
+- **Development Guides**: See `docs/dev/` for installation, quickstart, and testing guides
+- **Workflow Enhancements**: See `docs/architecture/WORKFLOW_ENHANCEMENTS.md` for workflow documentation
 
 ## 📝 **Session Notes / Future Ideas**
 
@@ -656,4 +712,4 @@ See the observability documentation for details on metrics and monitoring.
 - [ ] **Performance optimization** and resource management
 - [ ] **Integration testing** and validation pipeline
 - [ ] **Documentation** and onboarding improvements
-- [ ] **Multi-domain examples** (DocSentry, CodeSentry, DataSentry)
+- [ ] **Multi-domain examples** (DocSentry, DataSentry)

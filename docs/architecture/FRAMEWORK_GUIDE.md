@@ -1,8 +1,15 @@
 # Reusable Agentic Framework Guide
 
+> **See Also**: For project overview and installation, see [README.md](../../README.md). For CAMEL implementation details, see [CAMEL session notes](../../notes/camel-sessions/).
+
 ## Overview
 
 This framework provides a **reusable foundation** for building multi-agent workflows extracted from our successful CAMEL implementation. It enables rapid development of domain-specific agentic systems while maintaining consistent patterns for observability, error recovery, and tool integration.
+
+This framework is actively used in the Sentries project for:
+- **TestSentry CAMEL implementation** (`sentries/testsentry_camel.py`)
+- **CAMEL coordinator** (`sentries/camel/coordinator.py`)
+- **Custom agent workflows** built on the framework abstractions
 
 ## 🏗️ Architecture
 

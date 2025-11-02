@@ -4,7 +4,7 @@
 
 ```bash
 # For any repository, run this single command:
-curl -sSL https://raw.githubusercontent.com/kofort9/sentries/main/scripts/install_sentries.py | python3 -
+curl -sSL https://raw.githubusercontent.com/kofort9/sentries/main/scripts/setup_sentries.py | python3 -
 ```
 
 ## **What This Does**
@@ -32,8 +32,8 @@ pip install git+https://github.com/kofort9/sentries.git[all]
 ### **Using the script manually:**
 ```bash
 # Download and run the script
-wget https://raw.githubusercontent.com/kofort9/sentries/main/scripts/install_sentries.py
-python3 install_sentries.py
+wget https://raw.githubusercontent.com/kofort9/sentries/main/scripts/setup_sentries.py
+python3 setup_sentries.py
 ```
 
 ### **Add to your project:**
