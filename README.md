@@ -100,7 +100,7 @@ Sentries includes a **CAMEL-based multi-agent system** (`sentries/camel/`) that 
 - **CAMELCoordinator**: Orchestrates agent interactions with error recovery
 - **Tool-based architecture**: Wraps existing utilities (analysis, patching) as agent tools
 
-**📖 Learn More**: See [`docs/notes/camel-sessions/`](docs/notes/camel-sessions/) for implementation details and phase-by-phase progress notes.
+**📖 Learn More**: See [`docs/archive/camel-sessions/`](docs/archive/camel-sessions/) for historical implementation details and phase-by-phase progress notes.
 
 ### Reusable Framework
 
@@ -326,9 +326,9 @@ sentries/
 │   │   ├── TESTING.md        # Testing guide
 │   │   └── USAGE_EXAMPLES.md # Usage examples
 │   ├── notes/                # Historical notes
-│   │   ├── camel-sessions/   # CAMEL implementation notes
 │   │   └── project-status/  # Project status docs
-│   │       └── PROJECT_STATUS_AUDIT.md # Detailed project status
+│   └── archive/             # Archived historical documentation
+│       └── camel-sessions/  # Historical CAMEL implementation notes
 │   └── 01-metrics-overview.md # Observability overview
 └── .github/workflows/          # GitHub Actions integration
     └── test-sentries.yml      # Comprehensive CI/CD workflow
@@ -682,8 +682,8 @@ See `docs/01-metrics-overview.md` for details on metrics and monitoring.
 ## 📚 **Additional Documentation**
 
 - **Framework Guide**: See `docs/architecture/FRAMEWORK_GUIDE.md` for building custom multi-agent workflows
-- **CAMEL Implementation**: See `docs/notes/camel-sessions/` for CAMEL architecture details
-- **Project Status**: See `docs/notes/project-status/PROJECT_STATUS_AUDIT.md` for detailed project status
+- **CAMEL Implementation**: See `docs/archive/camel-sessions/` for historical CAMEL architecture details
+- **Project Status**: See `docs/notes/project-status/CONSOLIDATED_STATUS.md` for detailed project status
 - **Development Guides**: See `docs/dev/` for installation, quickstart, and testing guides
 - **Workflow Enhancements**: See `docs/architecture/WORKFLOW_ENHANCEMENTS.md` for workflow documentation
 
